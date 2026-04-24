@@ -36,6 +36,8 @@ const ORBIT_NAMES = {
   GTO: 'Geostationary Transfer Orbit',
   GEO: 'Geostationary Orbit',
   PO: 'Polar Orbit',
+  Sub: 'Suborbital',
+  LO: 'Lunar Orbit',
   SO: 'Suborbital',
   TLI: 'Trans-Lunar Injection',
 };

@@ -483,9 +483,22 @@ body a {
 
 .neutron-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #00D2A0 0%, #7EE8A2 100%);
+  background: linear-gradient(90deg, #00B889 0%, #00D2A0 28%, #7EE8A2 52%, #00D2A0 76%, #00B889 100%);
+  background-size: 220% 100%;
   border-radius: inherit;
   transition: width 1.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: neutron-progress-flow 8s linear infinite;
+}
+
+@keyframes neutron-progress-flow {
+  from { background-position: 220% 0; }
+  to { background-position: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neutron-bar-fill {
+    animation: none;
+  }
 }
 
 .neutron-bar-pct {
