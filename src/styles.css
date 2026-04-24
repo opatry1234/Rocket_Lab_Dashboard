@@ -482,12 +482,24 @@ body a {
 }
 
 .neutron-bar-fill {
+  position: relative;
   height: 100%;
-  background: linear-gradient(90deg, #00B889 0%, #00D2A0 28%, #7EE8A2 52%, #00D2A0 76%, #00B889 100%);
-  background-size: 220% 100%;
+  overflow: hidden;
+  background: linear-gradient(90deg, #009F78 0%, #00D2A0 30%, #6EF0B9 55%, #00C493 78%, #009F78 100%);
+  background-size: 260% 100%;
   border-radius: inherit;
   transition: width 1.25s cubic-bezier(0.16, 1, 0.3, 1);
-  animation: neutron-progress-flow 8s linear infinite;
+  animation: neutron-progress-flow 6s linear infinite;
+}
+
+.neutron-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(126, 232, 162, 0.12) 34%, rgba(126, 232, 162, 0.55) 50%, rgba(126, 232, 162, 0.12) 66%, transparent 100%);
+  transform: translateX(-100%);
+  animation: neutron-progress-sheen 3.8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 @keyframes neutron-progress-flow {
@@ -495,8 +507,14 @@ body a {
   to { background-position: 0 0; }
 }
 
+@keyframes neutron-progress-sheen {
+  0% { transform: translateX(-100%); }
+  55%, 100% { transform: translateX(100%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .neutron-bar-fill {
+  .neutron-bar-fill,
+  .neutron-bar-fill::after {
     animation: none;
   }
 }
