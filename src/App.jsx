@@ -1,38 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { fetchAllElectronLaunches, RateLimitError } from './api';
-import { buildDashboardData } from './processors';
+import { useLaunchData } from './DataContext';
+import {
+  LaunchSitesPage,
+  SuccessRatePage,
+  TotalLaunchesPage,
+  UpcomingPage,
+} from './DetailPages';
+import NeutronPage from './NeutronPage';
+import {
+  C,
+  ErrorPage,
+  LoadingPage,
+  PageFooter,
+  fmtDate,
+  missionName,
+  tickStyle,
+  tt,
+} from './shared';
 import './styles.css';
-
-const C = {
-  orange: '#FF4B12',
-  blue: '#00AAFF',
-  green: '#00D2A0',
-  yellow: '#FFB800',
-  red: '#FF4B4B',
-  purple: '#7B61FF',
-  pink: '#FF6B9D',
-  muted: '#8B9BC0',
-  border: '#1E2A40',
-  surface: '#141928',
-  text: '#E8EAF0',
-};
 
 const ORBIT_COLORS = [C.blue, C.orange, C.purple, C.green, C.yellow, C.pink];
 const OUTCOME_COLORS = [C.green, C.red, C.yellow];
-const tt = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text };
-const tickStyle = { fill: C.muted, fontSize: 11 };
 
-function KpiCard({ title, value, subtitle, color }) {
-  return (
-    <div className="kpi-card" style={{ borderTopColor: color }}>
+function KpiCard({ title, value, subtitle, color, to }) {
+  const content = (
+    <>
       <div className="kpi-value" style={{ color }}>{value}</div>
       <div className="kpi-label">{title}</div>
       {subtitle && <div className="kpi-sub">{subtitle}</div>}
+    </>
+  );
+
+  if (to) {
+    return (
+      <Link className="kpi-card kpi-card-link" style={{ borderTopColor: color }} to={to} aria-label={`${title} details`}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="kpi-card" style={{ borderTopColor: color }}>
+      {content}
     </div>
   );
 }
@@ -46,48 +61,66 @@ function ChartCard({ title, wide, children }) {
   );
 }
 
-export default function App() {
-  const [dash, setDash] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState(null);
-
-  useEffect(() => {
-    fetchAllElectronLaunches()
-      .then((launches) => setDash(buildDashboardData(launches)))
-      .catch(setErr)
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="fullpage">
-        <div className="spinner" />
-        <p style={{ color: C.muted, marginTop: 16 }}>Fetching launch data from Launch Library 2…</p>
-        <p style={{ color: C.border, marginTop: 6, fontSize: '0.75rem' }}>First load may take a moment</p>
+function AppNav() {
+  return (
+    <div className="app-nav">
+      <div className="app-nav-inner">
+        <div className="app-nav-brand">
+          <span className="app-nav-mark">RL</span>
+          <span className="app-nav-brand-text">Rocket Lab Dashboard</span>
+        </div>
+        <nav className="app-nav-tabs" aria-label="Primary navigation">
+          <NavLink to="/" end className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
+            Electron
+          </NavLink>
+          <NavLink to="/neutron" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
+            Neutron
+          </NavLink>
+        </nav>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
-  if (err) {
-    return (
-      <div className="fullpage">
-        <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>⚠️</div>
-        <h2 style={{ color: C.orange }}>Failed to load launch data</h2>
-        <p style={{ color: C.muted, marginTop: 8, maxWidth: 400 }}>{err.message}</p>
-        {err instanceof RateLimitError && (
-          <p style={{ color: C.yellow, marginTop: 8, fontSize: '0.85rem' }}>
-            LL2 free tier rate limit hit — retry after {err.retryAfterSeconds}s
-          </p>
-        )}
-        <button
-          style={{ marginTop: 20, padding: '8px 24px', background: C.orange, border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}
-          onClick={() => window.location.reload()}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
+function SuccessYearTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+
+  const row = payload[0].payload;
+  const ratioColor = row.failures ? C.red : C.green;
+
+  return (
+    <div className="chart-tooltip">
+      <p className="tooltip-label">{label}</p>
+      <p>Success Rate: {row.rate}%</p>
+      <p style={{ color: ratioColor }}>Success/Failure: {row.successes}/{row.failures}</p>
+      <p>Total Launches: {row.n}</p>
+    </div>
+  );
+}
+
+function ReliabilityTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+
+  const row = payload[0].payload;
+  const statusColor = row.status === 'Success' ? C.green : row.status === 'Failure' ? C.red : C.yellow;
+
+  return (
+    <div className="chart-tooltip">
+      <p className="tooltip-label">Flight #{label}</p>
+      <p>{missionName({ name: row.mission })}</p>
+      <p>{fmtDate(row.date)}</p>
+      <p>Running Success: {row.rate}%</p>
+      <p style={{ color: statusColor }}>Status: {row.status}</p>
+      {row.status !== 'Success' && <p>Reason: {row.failureReason}</p>}
+    </div>
+  );
+}
+
+function ElectronDashboard() {
+  const { dash, loading, err } = useLaunchData();
+
+  if (loading) return <LoadingPage />;
+  if (err) return <ErrorPage err={err} />;
 
   const {
     cadenceYear, cumulative, successOverall, successByYear,
@@ -100,10 +133,19 @@ export default function App() {
   const yearBars = cadenceYear.labels.map((y, i) => ({ year: y, launches: cadenceYear.counts[i] }));
   const cumLine = cumulative.dates.map((d, i) => ({ d, n: cumulative.cumulative[i] }));
   const rateByYear = successByYear.labels.map((y, i) => ({
-    year: y, rate: successByYear.rates[i], n: successByYear.totals[i],
+    year: y,
+    rate: successByYear.rates[i],
+    n: successByYear.totals[i],
+    successes: successByYear.successes[i],
+    failures: successByYear.failures[i],
   }));
-  const runLine = successRunning.labels.map((_, i) => ({
-    n: i + 1, rate: successRunning.runningRate[i],
+  const runLine = successRunning.labels.map((label, i) => ({
+    n: i + 1,
+    date: label.split(' ').slice(1).join(' '),
+    rate: successRunning.runningRate[i],
+    status: successRunning.statuses[i],
+    failureReason: successRunning.failureReasons[i],
+    mission: successRunning.missionNames[i],
   }));
   const outcomePie = successOverall.labels.map((l, i) => ({ name: l, value: successOverall.counts[i] }));
   const orbitPie = orbits.labels.map((l, i) => ({ name: l, value: orbits.counts[i] }));
@@ -123,7 +165,7 @@ export default function App() {
       <header className="hdr">
         <div className="hdr-inner">
           <div className="hdr-brand">
-            <span className="hdr-icon" role="img" aria-label="rocket">🚀</span>
+            <span className="hdr-icon" aria-hidden="true">RL</span>
             <div>
               <h1 className="hdr-title">Electron Mission Dashboard</h1>
               <p className="hdr-sub">Rocket Lab analytics · Launch Library 2</p>
@@ -137,10 +179,10 @@ export default function App() {
 
       <main className="main">
         <section className="kpi-row">
-          <KpiCard title="Total Launches" value={meta.totalLaunches} subtitle="flown missions" color={C.orange} />
-          <KpiCard title="Success Rate" value={`${successRate}%`} subtitle="all-time" color={C.green} />
-          <KpiCard title="Upcoming" value={meta.upcomingLaunches} subtitle="scheduled" color={C.blue} />
-          <KpiCard title="Launch Sites" value={launchPads.labels.length} subtitle="active pads" color={C.purple} />
+          <KpiCard title="Total Launches" value={meta.totalLaunches} subtitle="flown missions" color={C.orange} to="/launches" />
+          <KpiCard title="Success Rate" value={`${successRate}%`} subtitle="all-time" color={C.green} to="/success-rate" />
+          <KpiCard title="Upcoming" value={meta.upcomingLaunches} subtitle="scheduled" color={C.blue} to="/upcoming" />
+          <KpiCard title="Launch Sites" value={launchPads.labels.length} subtitle="active pads" color={C.purple} to="/launch-sites" />
         </section>
 
         <div className="grid">
@@ -187,8 +229,7 @@ export default function App() {
                 <XAxis dataKey="year" tick={tickStyle} />
                 <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={tickStyle} />
                 <Tooltip
-                  contentStyle={tt}
-                  formatter={(v, name) => name === 'rate' ? [`${v}%`, 'Success Rate'] : [v, 'Launches']}
+                  content={<SuccessYearTooltip />}
                 />
                 <ReferenceLine
                   y={90}
@@ -216,9 +257,7 @@ export default function App() {
                 />
                 <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={tickStyle} />
                 <Tooltip
-                  contentStyle={tt}
-                  formatter={(v) => [`${v}%`, 'Success Rate']}
-                  labelFormatter={(v) => `Flight #${v}`}
+                  content={<ReliabilityTooltip />}
                 />
                 <ReferenceLine y={90} stroke={C.yellow} strokeDasharray="4 4" />
                 <Line dataKey="rate" stroke={C.green} strokeWidth={2} dot={false} name="Running %" />
@@ -318,13 +357,23 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="ftr">
-        Data sourced from{' '}
-        <a href="https://ll.thespacedevs.com" target="_blank" rel="noopener noreferrer">
-          Launch Library 2
-        </a>{' '}
-        · Built by Owen Patry
-      </footer>
+      <PageFooter />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <AppNav />
+      <Routes>
+        <Route path="/" element={<ElectronDashboard />} />
+        <Route path="/neutron" element={<NeutronPage />} />
+        <Route path="/launches" element={<TotalLaunchesPage />} />
+        <Route path="/success-rate" element={<SuccessRatePage />} />
+        <Route path="/upcoming" element={<UpcomingPage />} />
+        <Route path="/launch-sites" element={<LaunchSitesPage />} />
+      </Routes>
+    </>
   );
 }

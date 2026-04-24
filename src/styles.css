@@ -12,7 +12,81 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body a {
+  color: inherit;
+}
+
 /* ─── Header ─────────────────────────────────── */
+
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(10, 14, 26, 0.94);
+  border-bottom: 1px solid #1E2A40;
+  backdrop-filter: blur(12px);
+}
+
+.app-nav-inner {
+  max-width: 1400px;
+  height: 54px;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.app-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #E8EAF0;
+  font-weight: 700;
+}
+
+.app-nav-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #FF4B12;
+  color: #fff;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.app-nav-brand-text {
+  font-size: 0.88rem;
+}
+
+.app-nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-nav-tab {
+  color: #8B9BC0;
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.app-nav-tab:hover,
+.app-nav-tab.active {
+  color: #E8EAF0;
+  border-color: #1E2A40;
+  background: #141928;
+}
 
 .hdr {
   background: linear-gradient(135deg, #141928 0%, #0D1221 100%);
@@ -36,8 +110,18 @@ body {
 }
 
 .hdr-icon {
-  font-size: 2.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #FF4B12;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
   line-height: 1;
+  letter-spacing: 0.04em;
 }
 
 .hdr-title {
@@ -59,6 +143,20 @@ body {
 .hdr-date {
   color: #8B9BC0;
   font-size: 0.78rem;
+}
+
+.back-btn {
+  color: #00AAFF;
+  text-decoration: none;
+  border: 1px solid #1E2A40;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.back-btn:hover {
+  background: #141928;
 }
 
 /* ─── Main layout ────────────────────────────── */
@@ -88,9 +186,19 @@ body {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+.kpi-card-link {
+  display: block;
+  text-decoration: none;
+}
+
 .kpi-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.kpi-card-link:focus-visible {
+  outline: 2px solid #00AAFF;
+  outline-offset: 3px;
 }
 
 .kpi-value {
@@ -148,6 +256,312 @@ body {
   margin-bottom: 14px;
 }
 
+.chart-tooltip {
+  background: #141928;
+  border: 1px solid #1E2A40;
+  border-radius: 8px;
+  color: #E8EAF0;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.tooltip-label {
+  color: #8B9BC0;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+/* ─── Detail pages ───────────────────────────── */
+
+.detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-chart {
+  min-height: 320px;
+}
+
+.mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mission-list.compact {
+  gap: 10px;
+}
+
+.mission-row {
+  background: #141928;
+  border: 1px solid #1E2A40;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.mission-row-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.mission-title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mission-title-line h3,
+.site-card-head h3,
+.neutron-milestone-card h3 {
+  color: #E8EAF0;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.mission-meta,
+.mission-side,
+.mission-row-detail,
+.empty-state,
+.neutron-milestone-card p,
+.page-intro p {
+  color: #8B9BC0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.mission-meta {
+  margin-top: 5px;
+}
+
+.mission-side {
+  min-width: 220px;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mission-row-detail {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #1E2A40;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.empty-state {
+  border: 1px dashed #1E2A40;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.site-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.site-card {
+  min-height: 220px;
+}
+
+.site-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.site-card-head span {
+  color: #00D2A0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.site-upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style-position: inside;
+  color: #E8EAF0;
+  font-size: 0.82rem;
+}
+
+.site-upcoming-list li span {
+  display: block;
+  color: #8B9BC0;
+  font-size: 0.76rem;
+  margin-top: 2px;
+}
+
+/* ─── Neutron page ───────────────────────────── */
+
+.neutron-bar-wrap {
+  background: #0A0E1A;
+  border-bottom: 1px solid #1E2A40;
+}
+
+.neutron-bar-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 14px 32px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.neutron-bar-label {
+  color: #E8EAF0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.neutron-bar-track {
+  position: relative;
+  flex: 1;
+  height: 26px;
+  background: #1E2A40;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.neutron-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00D2A0 0%, #7EE8A2 100%);
+  border-radius: inherit;
+  transition: width 1.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.neutron-bar-pct {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #E8EAF0;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.page-intro {
+  margin-bottom: 32px;
+}
+
+.page-intro h1 {
+  color: #E8EAF0;
+  font-size: 1.55rem;
+  margin-bottom: 8px;
+}
+
+.neutron-milestone-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.neutron-milestone-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mini-bar {
+  height: 6px;
+  background: #1E2A40;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.mini-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 1.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.milestone-pct {
+  color: #8B9BC0;
+  font-size: 0.72rem;
+  text-align: right;
+  margin-top: -6px;
+}
+
+.neutron-timeline-card {
+  padding: 32px 24px 28px;
+}
+
+.neutron-timeline-wrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 14px;
+}
+
+.neutron-timeline-line {
+  position: absolute;
+  top: 37px;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: #1E2A40;
+}
+
+.neutron-timeline-item {
+  position: relative;
+  text-align: center;
+}
+
+.neutron-timeline-year {
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.neutron-timeline-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.neutron-timeline-text {
+  color: #8B9BC0;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.neutron-stat-value {
+  font-size: 1.7rem;
+}
+
 /* ─── Loading / Error ────────────────────────── */
 
 .fullpage {
@@ -203,9 +617,52 @@ body {
   .kpi-row {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .site-grid,
+  .neutron-milestone-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .neutron-timeline-wrap {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .neutron-timeline-line {
+    top: 0;
+    bottom: 0;
+    left: 6px;
+    right: auto;
+    width: 2px;
+    height: auto;
+  }
+
+  .neutron-timeline-item {
+    display: grid;
+    grid-template-columns: 54px 16px 1fr;
+    gap: 10px;
+    align-items: center;
+    text-align: left;
+  }
+
+  .neutron-timeline-year,
+  .neutron-timeline-dot {
+    margin: 0;
+  }
 }
 
 @media (max-width: 640px) {
+  .app-nav-inner {
+    height: auto;
+    padding: 12px 16px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-nav-brand-text {
+    font-size: 0.8rem;
+  }
+
   .hdr-inner {
     padding: 14px 16px;
     flex-direction: column;
@@ -229,5 +686,26 @@ body {
 
   .kpi-value {
     font-size: 2rem;
+  }
+
+  .mission-row-main,
+  .site-card-head,
+  .neutron-bar-inner {
+    flex-direction: column;
+  }
+
+  .mission-side {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .neutron-bar-inner {
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .neutron-bar-label {
+    white-space: normal;
   }
 }

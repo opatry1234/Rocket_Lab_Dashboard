@@ -1,18 +1,33 @@
 // ─── Status normalisation ────────────────────────────────────────────────────
 
-const STATUS = {
+export const STATUS = {
   SUCCESS: 'Success',
   FAILURE: 'Failure',
   PARTIAL: 'Partial Failure',
 };
 
-function statusOf(launch) {
+export function statusOf(launch) {
   return launch?.status?.abbrev ?? 'Unknown';
 }
 
-function isFlown(launch) {
+export function isFlown(launch) {
   const s = statusOf(launch);
   return s === STATUS.SUCCESS || s === STATUS.FAILURE || s === STATUS.PARTIAL;
+}
+
+function shortFailureReason(launch) {
+  const status = statusOf(launch);
+  if (status === STATUS.PARTIAL) return 'Partial mission success';
+  if (status !== STATUS.FAILURE) return 'Mission successful';
+
+  const text = String(
+    launch?.failreason || launch?.failure_reason || launch?.status?.description || 'Launch vehicle failure'
+  )
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return text.split(/\s+/).slice(0, 5).join(' ');
 }
 
 // ─── Cadence ─────────────────────────────────────────────────────────────────
@@ -91,7 +106,7 @@ export function overallSuccessRate(launches) {
 
 /**
  * Yearly success rate (%) — only years with at least one flown launch.
- * @returns {{ labels: string[], rates: number[], totals: number[] }}
+ * @returns {{ labels: string[], rates: number[], totals: number[], successes: number[], failures: number[] }}
  */
 export function successRateByYear(launches) {
   const { labels, byYear } = cadenceByYear(launches);
@@ -101,13 +116,15 @@ export function successRateByYear(launches) {
     return +((successes / group.length) * 100).toFixed(1);
   });
   const totals = labels.map((y) => byYear[y].length);
-  return { labels, rates, totals };
+  const successes = labels.map((y) => byYear[y].filter((l) => statusOf(l) === STATUS.SUCCESS).length);
+  const failures = labels.map((y) => byYear[y].filter((l) => statusOf(l) !== STATUS.SUCCESS).length);
+  return { labels, rates, totals, successes, failures };
 }
 
 /**
  * Running (trailing) success rate after each launch.
  * Good for a line chart showing reliability trend over time.
- * @returns {{ labels: string[], runningRate: number[] }}
+ * @returns {{ labels: string[], runningRate: number[], statuses: string[], failureReasons: string[], missionNames: string[] }}
  */
 export function runningSuccessRate(launches) {
   const flown = launches
@@ -116,14 +133,20 @@ export function runningSuccessRate(launches) {
 
   const labels = [];
   const runningRate = [];
+  const statuses = [];
+  const failureReasons = [];
+  const missionNames = [];
   let successes = 0;
 
   for (let i = 0; i < flown.length; i++) {
     if (statusOf(flown[i]) === STATUS.SUCCESS) successes++;
     labels.push(`#${i + 1} ${flown[i].net.slice(0, 10)}`);
     runningRate.push(+((successes / (i + 1)) * 100).toFixed(1));
+    statuses.push(statusOf(flown[i]));
+    failureReasons.push(shortFailureReason(flown[i]));
+    missionNames.push(flown[i]?.name ?? `Flight #${i + 1}`);
   }
-  return { labels, runningRate };
+  return { labels, runningRate, statuses, failureReasons, missionNames };
 }
 
 // ─── Payload categories ───────────────────────────────────────────────────────
