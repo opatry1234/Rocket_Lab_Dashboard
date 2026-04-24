@@ -273,6 +273,35 @@ body a {
   margin-bottom: 2px;
 }
 
+.orbit-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #1E2A40;
+}
+
+.orbit-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8B9BC0;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.orbit-legend-item strong {
+  color: #E8EAF0;
+}
+
+.orbit-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
 /* ─── Detail pages ───────────────────────────── */
 
 .detail-main {
@@ -620,6 +649,10 @@ body a {
 
   .site-grid,
   .neutron-milestone-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .orbit-legend {
     grid-template-columns: 1fr;
   }
 

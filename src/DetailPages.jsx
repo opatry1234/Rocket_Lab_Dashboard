@@ -68,11 +68,11 @@ export function TotalLaunchesPage() {
   if (loading) return <LoadingPage />;
   if (err) return <ErrorPage err={err} />;
 
-  const flown = launches.filter(isFlown).sort(sortByDateAsc);
+  const flown = launches.filter(isFlown).sort(sortByDateDesc);
 
   return (
     <div className="app">
-      <DetailHeader title="Electron Launch History" subtitle={`${flown.length} flown missions in chronological order`} />
+      <DetailHeader title="Electron Launch History" subtitle={`${flown.length} flown missions, most recent first`} />
       <main className="main detail-main">
         <section className="mission-list">
           {flown.map((launch) => (

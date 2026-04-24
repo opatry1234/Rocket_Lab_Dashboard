@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import {
-  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  BarChart, Bar, LineChart, Line,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
@@ -27,6 +27,18 @@ import './styles.css';
 
 const ORBIT_COLORS = [C.blue, C.orange, C.purple, C.green, C.yellow, C.pink];
 const OUTCOME_COLORS = [C.green, C.red, C.yellow];
+const ORBIT_NAMES = {
+  LEO: 'Low Earth Orbit',
+  SSO: 'Sun-Synchronous Orbit',
+  ISS: 'International Space Station',
+  MEO: 'Medium Earth Orbit',
+  HEO: 'Highly Elliptical Orbit',
+  GTO: 'Geostationary Transfer Orbit',
+  GEO: 'Geostationary Orbit',
+  PO: 'Polar Orbit',
+  SO: 'Suborbital',
+  TLI: 'Trans-Lunar Injection',
+};
 
 function KpiCard({ title, value, subtitle, color, to }) {
   const content = (
@@ -86,13 +98,16 @@ function SuccessYearTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
 
   const row = payload[0].payload;
-  const ratioColor = row.failures ? C.red : C.green;
-
   return (
     <div className="chart-tooltip">
       <p className="tooltip-label">{label}</p>
       <p>Success Rate: {row.rate}%</p>
-      <p style={{ color: ratioColor }}>Success/Failure: {row.successes}/{row.failures}</p>
+      <p>
+        Success/Failure:{' '}
+        <span style={{ color: C.green }}>{row.successes}</span>
+        <span style={{ color: C.muted }}>/</span>
+        <span style={{ color: C.red }}>{row.failures}</span>
+      </p>
       <p>Total Launches: {row.n}</p>
     </div>
   );
@@ -123,7 +138,7 @@ function ElectronDashboard() {
   if (err) return <ErrorPage err={err} />;
 
   const {
-    cadenceYear, cumulative, successOverall, successByYear,
+    cadenceYear, successOverall, successByYear,
     successRunning, payloadCategories, orbits, topCustomers,
     launchPads, meta,
   } = dash;
@@ -131,7 +146,6 @@ function ElectronDashboard() {
   const successRate = +(successOverall.rates['Success'] ?? 0);
 
   const yearBars = cadenceYear.labels.map((y, i) => ({ year: y, launches: cadenceYear.counts[i] }));
-  const cumLine = cumulative.dates.map((d, i) => ({ d, n: cumulative.cumulative[i] }));
   const rateByYear = successByYear.labels.map((y, i) => ({
     year: y,
     rate: successByYear.rates[i],
@@ -149,6 +163,11 @@ function ElectronDashboard() {
   }));
   const outcomePie = successOverall.labels.map((l, i) => ({ name: l, value: successOverall.counts[i] }));
   const orbitPie = orbits.labels.map((l, i) => ({ name: l, value: orbits.counts[i] }));
+  const orbitLegend = orbitPie.map((entry, i) => ({
+    ...entry,
+    color: ORBIT_COLORS[i % ORBIT_COLORS.length],
+    fullName: ORBIT_NAMES[entry.name] ?? entry.name,
+  }));
   const payloadBars = payloadCategories.labels.slice(0, 8).map((l, i) => ({
     name: l, n: payloadCategories.counts[i],
   }));
@@ -196,29 +215,6 @@ function ElectronDashboard() {
                 <Tooltip contentStyle={tt} />
                 <Bar dataKey="launches" fill={C.orange} radius={[4, 4, 0, 0]} name="Launches" />
               </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Cumulative Launches Over Time">
-            <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={cumLine} margin={{ top: 4, right: 16, left: -8, bottom: 4 }}>
-                <defs>
-                  <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={C.blue} stopOpacity={0.3} />
-                    <stop offset="100%" stopColor={C.blue} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
-                <XAxis
-                  dataKey="d"
-                  tick={tickStyle}
-                  tickFormatter={(v) => v.slice(0, 4)}
-                  interval={Math.max(1, Math.floor(cumLine.length / 6))}
-                />
-                <YAxis tick={tickStyle} allowDecimals={false} />
-                <Tooltip contentStyle={tt} formatter={(v) => [v, 'Missions']} />
-                <Area dataKey="n" stroke={C.blue} fill="url(#blueGrad)" strokeWidth={2} dot={false} name="Total" />
-              </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
 
@@ -302,6 +298,16 @@ function ElectronDashboard() {
                 <Tooltip contentStyle={tt} />
               </PieChart>
             </ResponsiveContainer>
+            <div className="orbit-legend" aria-label="Orbit abbreviation legend">
+              {orbitLegend.map((orbit) => (
+                <div key={orbit.name} className="orbit-legend-item">
+                  <span className="orbit-legend-dot" style={{ background: orbit.color }} />
+                  <span>
+                    <strong>{orbit.name}</strong> - {orbit.fullName}
+                  </span>
+                </div>
+              ))}
+            </div>
           </ChartCard>
 
           <ChartCard title="Mission Types (Top 8)">
