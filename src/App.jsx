@@ -13,6 +13,7 @@ import {
   UpcomingPage,
 } from './DetailPages';
 import NeutronPage from './NeutronPage';
+import CompetitionPage from './CompetitionPage';
 import {
   C,
   ErrorPage,
@@ -89,6 +90,9 @@ function AppNav() {
           </NavLink>
           <NavLink to="/neutron" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
             Neutron
+          </NavLink>
+          <NavLink to="/competition" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
+            Industry Competition
           </NavLink>
         </nav>
       </div>
@@ -381,6 +385,7 @@ export default function App() {
         <Route path="/success-rate" element={<SuccessRatePage />} />
         <Route path="/upcoming" element={<UpcomingPage />} />
         <Route path="/launch-sites" element={<LaunchSitesPage />} />
+        <Route path="/competition" element={<CompetitionPage />} />
       </Routes>
     </>
   );
