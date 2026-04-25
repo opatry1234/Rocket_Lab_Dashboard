@@ -14,6 +14,7 @@ import {
 } from './DetailPages';
 import NeutronPage from './NeutronPage';
 import CompetitionPage from './CompetitionPage';
+import { OrbitalSignalDashboard, CompanyProfilePage } from './OrbitalSignalPage';
 import {
   C,
   ErrorPage,
@@ -93,6 +94,9 @@ function AppNav() {
           </NavLink>
           <NavLink to="/competition" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
             Industry Competition
+          </NavLink>
+          <NavLink to="/orbital-signal" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
+            Orbital Signal
           </NavLink>
         </nav>
       </div>
@@ -386,6 +390,8 @@ export default function App() {
         <Route path="/upcoming" element={<UpcomingPage />} />
         <Route path="/launch-sites" element={<LaunchSitesPage />} />
         <Route path="/competition" element={<CompetitionPage />} />
+        <Route path="/orbital-signal" element={<OrbitalSignalDashboard />} />
+        <Route path="/orbital-signal/:companyId" element={<CompanyProfilePage />} />
       </Routes>
     </>
   );
