@@ -1,17 +1,18 @@
 const BASE_URL = 'https://ll.thespacedevs.com/2.3.0';
-const CACHE_KEY = 'electron_launches_cache';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 // LL2 free tier allows ~15 req/hr; page size 100 keeps Electron's ~86 launches to 1-2 calls
 const PAGE_SIZE = 100;
 
-/**
- * Fetch a single page from the LL2 launches endpoint.
- * Returns the raw { count, next, results } envelope.
- */
-async function fetchPage(offset = 0) {
+function rocketCacheKey(rocketName) {
+  return `rl_dashboard_${rocketName.toLowerCase().replace(/\s+/g, '_')}_cache`;
+}
+
+// ─── Generic paginated fetch ──────────────────────────────────────────────────
+
+async function fetchPageForRocket(rocketName, offset = 0) {
   const params = new URLSearchParams({
-    rocket__configuration__name: 'Electron',
+    rocket__configuration__name: rocketName,
     limit: PAGE_SIZE,
     offset,
     mode: 'detailed',
@@ -33,15 +34,18 @@ async function fetchPage(offset = 0) {
 }
 
 /**
- * Fetch every Electron launch from LL2, paginating until exhausted.
- * Results are cached in localStorage for CACHE_TTL_MS.
+ * Fetch all launches for any rocket by name from LL2, paginating until exhausted.
+ * Results are cached in localStorage per rocket for CACHE_TTL_MS.
  *
+ * @param {string} rocketName - LL2 rocket configuration name (e.g. 'Electron', 'Falcon 9')
  * @param {boolean} [forceRefresh=false] - Bypass cache and re-fetch live data.
  * @returns {Promise<Launch[]>}
  */
-export async function fetchAllElectronLaunches(forceRefresh = false) {
+export async function fetchLaunchesByRocket(rocketName, forceRefresh = false) {
+  const key = rocketCacheKey(rocketName);
+
   if (!forceRefresh) {
-    const cached = readCache();
+    const cached = readCacheByKey(key);
     if (cached) return cached;
   }
 
@@ -50,14 +54,18 @@ export async function fetchAllElectronLaunches(forceRefresh = false) {
   let total = null;
 
   do {
-    const page = await fetchPage(offset);
+    const page = await fetchPageForRocket(rocketName, offset);
     if (total === null) total = page.count;
     launches.push(...page.results);
     offset += PAGE_SIZE;
   } while (offset < total);
 
-  writeCache(launches);
+  writeCacheByKey(key, launches);
   return launches;
+}
+
+export async function fetchAllElectronLaunches(forceRefresh = false) {
+  return fetchLaunchesByRocket('Electron', forceRefresh);
 }
 
 /**
@@ -65,14 +73,14 @@ export async function fetchAllElectronLaunches(forceRefresh = false) {
  * @returns {Launch[]|null}
  */
 export function getCachedLaunches() {
-  return readCache();
+  return readCacheByKey(rocketCacheKey('Electron'));
 }
 
 /**
  * Expire the localStorage cache so the next fetchAllElectronLaunches hits the network.
  */
 export function clearCache() {
-  localStorage.removeItem(CACHE_KEY);
+  localStorage.removeItem(rocketCacheKey('Electron'));
 }
 
 /**
@@ -81,7 +89,7 @@ export function clearCache() {
  */
 export function cacheAgeMs() {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(rocketCacheKey('Electron'));
     if (!raw) return null;
     const { timestamp } = JSON.parse(raw);
     return Date.now() - timestamp;
@@ -92,9 +100,9 @@ export function cacheAgeMs() {
 
 // ─── Cache helpers ───────────────────────────────────────────────────────────
 
-function readCache() {
+function readCacheByKey(key) {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { timestamp, data } = JSON.parse(raw);
     if (Date.now() - timestamp > CACHE_TTL_MS) return null;
@@ -104,9 +112,9 @@ function readCache() {
   }
 }
 
-function writeCache(launches) {
+function writeCacheByKey(key, launches) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: launches }));
+    localStorage.setItem(key, JSON.stringify({ timestamp: Date.now(), data: launches }));
   } catch {
     // localStorage quota exceeded — silently skip caching
   }
