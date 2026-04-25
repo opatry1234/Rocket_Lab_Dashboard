@@ -622,6 +622,66 @@ body a {
   font-size: 1.7rem;
 }
 
+/* ─── Industry Competition page ──────────────── */
+
+.comp-kpi-row {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.comp-kpi-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.comp-kpi-rocket {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.comp-kpi-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: #8B9BC0;
+  font-size: 0.7rem;
+  margin-top: 4px;
+}
+
+.comp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: #141928;
+  border: 1px solid #1E2A40;
+  border-left: 3px solid #7B61FF;
+  border-radius: 10px;
+  color: #8B9BC0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.comp-note-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid #7B61FF;
+  color: #7B61FF;
+  font-size: 0.7rem;
+  font-weight: 800;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
 /* ─── Loading / Error ────────────────────────── */
 
 .fullpage {
@@ -674,7 +734,8 @@ body a {
     grid-template-columns: 1fr;
   }
 
-  .kpi-row {
+  .kpi-row,
+  .comp-kpi-row {
     grid-template-columns: repeat(2, 1fr);
   }
 
