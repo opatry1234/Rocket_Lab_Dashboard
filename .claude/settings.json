@@ -1,3 +1,6 @@
 {
-  "allowedTools": ["Bash"]
+  "permissions": {
+    "allow": ["Bash(*)"],
+    "deny": []
+  }
 }
