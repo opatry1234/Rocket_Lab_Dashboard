@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient'
+import { debugLog } from './debugLog'
 
 const BASE_URL = 'https://ll.thespacedevs.com/2.3.0';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -25,10 +26,12 @@ async function fetchPageForRocket(rocketName, offset = 0) {
 
   if (res.status === 429) {
     const retryAfter = parseInt(res.headers.get('Retry-After') || '60', 10);
+    debugLog('WARN', `LL2 rate limit hit, Retry-After=${retryAfter}s`);
     throw new RateLimitError(`Rate limited by LL2 API. Retry after ${retryAfter}s.`, retryAfter);
   }
 
   if (!res.ok) {
+    debugLog('ERROR', `LL2 API error ${res.status}: ${res.statusText}`);
     throw new Error(`LL2 API error ${res.status}: ${res.statusText}`);
   }
 
@@ -84,12 +87,17 @@ export async function fetchLaunchesByRocket(rocketName, forceRefresh = false) {
 async function readLaunchesFromSupabase(rocketName) {
   if (!supabase) return null;
   try {
+    debugLog('SUPABASE', `Reading rocket_launches for ${rocketName}…`);
     const { data, error } = await supabase
       .from('rocket_launches')
       .select('data')
       .eq('rocket_name', rocketName);
 
-    if (error || !data || data.length === 0) return null;
+    if (error || !data || data.length === 0) {
+      debugLog('SUPABASE', `No cached launches for ${rocketName}`);
+      return null;
+    }
+    debugLog('SUPABASE', `Got ${data.length} launches for ${rocketName} from Supabase`);
     return data.map(row => row.data);
   } catch {
     return null;
@@ -246,6 +254,7 @@ export function signalAgeMs() {
 async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
   if (!supabase) return null;
   try {
+    debugLog('SUPABASE', 'Reading signal_snapshots…');
     const { data, error } = await supabase
       .from('signal_snapshots')
       .select('signals, created_at')
@@ -253,11 +262,19 @@ async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
       .limit(1)
       .maybeSingle();
 
-    if (error || !data) return null;
+    if (error || !data) {
+      debugLog('SUPABASE', 'No snapshot found');
+      return null;
+    }
 
     const ageMs = Date.now() - new Date(data.created_at).getTime();
-    if (ageMs > maxAgeMs) return null;
-
+    const ageMin = Math.round(ageMs / 60000);
+    if (ageMs > maxAgeMs) {
+      const ageH = (ageMs / 3600000).toFixed(1);
+      debugLog('WARN', `Snapshot stale (${ageH}h old > ${maxAgeMs / 3600000}h TTL), falling back`);
+      return null;
+    }
+    debugLog('SUPABASE', `Got snapshot, age=${ageMin}min`);
     return data.signals;
   } catch {
     return null;
@@ -294,6 +311,7 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
     // Populate localStorage too so subsequent page loads are instant
     writeCacheByKey(ST_CACHE_KEY, sbSignals);
     try { localStorage.setItem(ST_LAST_FETCH_KEY, String(Date.now())); } catch {}
+    debugLog('CACHE', 'Wrote Supabase snapshot to localStorage');
     report('Loaded from shared cache', 5, 5);
     return sbSignals;
   }
@@ -305,12 +323,15 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
 
   // ── 1. Media — Spaceflight News API ──────────────────────────────────────
   report('Scanning news coverage…', 1, 5);
+  debugLog('API', `Fetching Spaceflight News counts for ${companies.length} companies since ${sinceDate}`);
   const mediaRaw = await Promise.all(
     companies.map(c => fetchSpaceNewsCount(c.name, sinceDate))
   );
+  debugLog('DATA', `Media raw: ${companies.map((c, i) => `${c.name}=${mediaRaw[i]}`).join(', ')}`);
 
   // ── 2. Hiring — Greenhouse / Lever ───────────────────────────────────────
   report('Checking job boards…', 2, 5);
+  debugLog('API', `Fetching job board counts for ${companies.length} companies`);
   const hiringRaw = await Promise.all(
     companies.map(c => {
       if (c.greenhouse) return fetchGreenhouseCount(c.greenhouse);
@@ -318,24 +339,31 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
       return Promise.resolve(0);
     })
   );
+  debugLog('DATA', `Hiring raw: ${companies.map((c, i) => `${c.name}=${hiringRaw[i]}`).join(', ')}`);
 
   // ── 3. Buzz — HN Algolia ─────────────────────────────────────────────────
   report('Analyzing HN mentions…', 3, 5);
+  debugLog('API', `Fetching HN mention counts for ${companies.length} companies`);
   const buzzRaw = await Promise.all(
     companies.map(c => fetchHNCount(c.hnQuery, since30d))
   );
+  debugLog('DATA', `Buzz raw: ${companies.map((c, i) => `${c.name}=${buzzRaw[i]}`).join(', ')}`);
 
   // ── 4. Investment proxy — Wikipedia pageviews (last full month) ───────────
   report('Measuring web interest…', 4, 5);
+  debugLog('API', `Fetching Wikipedia pageviews for ${companies.length} companies`);
   const investRaw = await Promise.all(
     companies.map(c => fetchWikiViews(c.wikiTitle))
   );
+  debugLog('DATA', `Interest raw: ${companies.map((c, i) => `${c.name}=${investRaw[i]}`).join(', ')}`);
 
   // ── 5. Operations — LL2 from Supabase cache (no live LL2 calls) ──────────
   report('Pulling launch cadence…', 5, 5);
+  debugLog('SUPABASE', `Reading launch cadence for ${companies.length} companies from cache`);
   const opsRaw = await Promise.all(
     companies.map(c => fetchRecentLaunchCount(c.ll2Rockets))
   );
+  debugLog('DATA', `Operations raw: ${companies.map((c, i) => `${c.name}=${opsRaw[i]}`).join(', ')}`);
 
   // ── Normalize each domain 0–100 relative to max ───────────────────────────
   report('Building intelligence…', 5, 5);
@@ -367,14 +395,18 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
         operations: opsRaw[i],
       },
     };
+    debugLog('DATA', `${c.name}: media=${mediaNorm[i]}, hiring=${hiringNorm[i]}, buzz=${buzzNorm[i]}, interest=${investNorm[i]}, ops=${opsNorm[i]}`);
   });
 
   // Persist to localStorage
   writeCacheByKey(ST_CACHE_KEY, signals);
   try { localStorage.setItem(ST_LAST_FETCH_KEY, String(Date.now())); } catch {}
+  debugLog('CACHE', 'Wrote signals to localStorage');
 
   // Write to Supabase in the background so next visitor skips the API calls
-  writeSignalsToSupabase(signals).catch(() => {});
+  writeSignalsToSupabase(signals)
+    .then(() => debugLog('SUPABASE', 'Wrote signal snapshot to Supabase'))
+    .catch(() => debugLog('ERROR', 'Failed to write signal snapshot to Supabase'));
 
   return signals;
 }
@@ -385,32 +417,46 @@ async function fetchSpaceNewsCount(companyName, sinceDate) {
   try {
     const url = `https://api.spaceflightnewsapi.net/v4/articles/?search=${encodeURIComponent(companyName)}&published_at_gte=${sinceDate}&limit=1`;
     const res = await fetch(url);
-    if (!res.ok) return 0;
+    if (!res.ok) {
+      debugLog('ERROR', `Spaceflight News ${res.status} for "${companyName}"`);
+      return 0;
+    }
     const json = await res.json();
     return json.count ?? 0;
-  } catch {
+  } catch (e) {
+    debugLog('ERROR', `Spaceflight News fetch failed for "${companyName}": ${e.message}`);
     return 0;
   }
 }
 
 async function fetchGreenhouseCount(slug) {
   try {
+    debugLog('API', `Fetching Greenhouse jobs for ${slug}`);
     const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs`);
-    if (!res.ok) return 0;
+    if (!res.ok) {
+      debugLog('ERROR', `Greenhouse ${res.status} for ${slug}`);
+      return 0;
+    }
     const json = await res.json();
     return (json.jobs ?? []).length;
-  } catch {
+  } catch (e) {
+    debugLog('ERROR', `Greenhouse fetch failed for ${slug}: ${e.message}`);
     return 0;
   }
 }
 
 async function fetchLeverCount(slug) {
   try {
+    debugLog('API', `Fetching Lever jobs for ${slug}`);
     const res = await fetch(`https://api.lever.co/v0/postings/${slug}?mode=json`);
-    if (!res.ok) return 0;
+    if (!res.ok) {
+      debugLog('ERROR', `Lever ${res.status} for ${slug}`);
+      return 0;
+    }
     const json = await res.json();
     return Array.isArray(json) ? json.length : 0;
-  } catch {
+  } catch (e) {
+    debugLog('ERROR', `Lever fetch failed for ${slug}: ${e.message}`);
     return 0;
   }
 }
@@ -419,10 +465,14 @@ async function fetchHNCount(query, sinceTimestamp) {
   try {
     const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story&numericFilters=created_at_i%3E${sinceTimestamp}&hitsPerPage=1`;
     const res = await fetch(url);
-    if (!res.ok) return 0;
+    if (!res.ok) {
+      debugLog('ERROR', `HN Algolia ${res.status} for "${query}"`);
+      return 0;
+    }
     const json = await res.json();
     return json.nbHits ?? 0;
-  } catch {
+  } catch (e) {
+    debugLog('ERROR', `HN fetch failed for "${query}": ${e.message}`);
     return 0;
   }
 }
@@ -440,11 +490,15 @@ async function fetchWikiViews(title) {
     const end   = `${y}${m}${String(lastDay).padStart(2, '0')}`;
     const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/${encodeURIComponent(title)}/monthly/${start}/${end}`;
     const res = await fetch(url, { headers: { 'User-Agent': 'SpaceTerminal/1.0' } });
-    if (!res.ok) return 0;
+    if (!res.ok) {
+      debugLog('ERROR', `Wikipedia ${res.status} for "${title}"`);
+      return 0;
+    }
     const json = await res.json();
     const items = json.items ?? [];
     return items.reduce((sum, item) => sum + (item.views ?? 0), 0);
-  } catch {
+  } catch (e) {
+    debugLog('ERROR', `Wikipedia fetch failed for "${title}": ${e.message}`);
     return 0;
   }
 }

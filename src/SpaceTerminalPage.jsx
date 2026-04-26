@@ -12,7 +12,9 @@ import {
   fetchSpaceTerminalSignals,
   getStaleSignals, getFreshSignals, signalAgeMs, ST_MIN_REFRESH_MS,
 } from './api';
+import { debugLog } from './debugLog';
 import { C, tt, tickStyle, PageFooter } from './shared';
+import DebugPanel from './DebugPanel';
 
 // ─── Heat Map ──────────────────────────────────────────────────────────────────
 
@@ -223,10 +225,12 @@ export default function SpaceTerminalPage() {
   useEffect(() => {
     const fresh = getFreshSignals();
     if (fresh) {
+      debugLog('CACHE', 'Loaded fresh signals from localStorage');
       setSnapshot(fresh);
       setLoading(false);
       return;
     }
+    debugLog('CACHE', 'No fresh localStorage cache — fetching live signals');
     // No fresh data — fetch
     setLoading(true);
     fetchSpaceTerminalSignals(COMPANIES, onProgress)
@@ -399,6 +403,7 @@ export default function SpaceTerminalPage() {
           <a href="https://ll.thespacedevs.com" target="_blank" rel="noopener noreferrer">Launch Library 2</a>.
         </>
       } />
+      <DebugPanel />
     </div>
   );
 }
