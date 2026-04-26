@@ -49,10 +49,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 // ─── Company definitions (mirrors spaceTerminalData.js) ───────────────────────
 
 const COMPANIES = [
-  { id: 'spacex', name: 'SpaceX', lever: 'spacex', greenhouse: null, wikiTitle: 'SpaceX', hnQuery: 'SpaceX', ll2Rockets: ['Falcon 9', 'Falcon Heavy', 'Starship'] },
-  { id: 'rocket-lab', name: 'Rocket Lab', greenhouse: 'rocketlabusa', lever: null, wikiTitle: 'Rocket_Lab', hnQuery: 'Rocket Lab', ll2Rockets: ['Electron'] },
-  { id: 'blue-origin', name: 'Blue Origin', greenhouse: 'blueorigin', lever: null, wikiTitle: 'Blue_Origin', hnQuery: 'Blue Origin', ll2Rockets: ['New Glenn', 'New Shepard'] },
-  { id: 'firefly', name: 'Firefly Aerospace', greenhouse: 'fireflyspace', lever: null, wikiTitle: 'Firefly_Aerospace', hnQuery: 'Firefly Aerospace', ll2Rockets: ['Alpha'] },
+  { id: 'spacex', name: 'SpaceX', greenhouse: 'spacex', lever: null, wikiTitle: 'SpaceX', hnQuery: 'SpaceX', ll2Rockets: ['Falcon 9', 'Falcon Heavy', 'Starship'] },
+  { id: 'rocket-lab', name: 'Rocket Lab', greenhouse: 'rocketlab', lever: null, wikiTitle: 'Rocket_Lab', hnQuery: 'Rocket Lab', ll2Rockets: ['Electron'] },
+  { id: 'blue-origin', name: 'Blue Origin', greenhouse: null, lever: 'blueorigin', wikiTitle: 'Blue_Origin', hnQuery: 'Blue Origin', ll2Rockets: ['New Glenn', 'New Shepard'] },
+  { id: 'firefly', name: 'Firefly Aerospace', greenhouse: null, lever: null, smartrecruiters: 'FireflyAerospace', wikiTitle: 'Firefly_Aerospace', hnQuery: 'Firefly Aerospace', ll2Rockets: ['Alpha'] },
   { id: 'vast', name: 'Vast', greenhouse: 'vast', lever: null, wikiTitle: 'Vast_(company)', hnQuery: 'Vast Space', ll2Rockets: [] },
   { id: 'relativity', name: 'Relativity Space', greenhouse: 'relativity', lever: null, wikiTitle: 'Relativity_Space', hnQuery: 'Relativity Space', ll2Rockets: ['Terran R'] },
 ]
@@ -88,6 +88,17 @@ async function fetchLeverCount(slug) {
     if (!res.ok) return 0
     const json = await res.json()
     return Array.isArray(json) ? json.length : 0
+  } catch {
+    return 0
+  }
+}
+
+async function fetchSmartRecruitersCount(companyId) {
+  try {
+    const res = await fetch(`https://api.smartrecruiters.com/v1/companies/${companyId}/postings`)
+    if (!res.ok) return 0
+    const json = await res.json()
+    return json.totalFound ?? 0
   } catch {
     return 0
   }
@@ -185,8 +196,9 @@ async function main() {
     }
 
     try {
-      if (c.greenhouse) hiring = await fetchGreenhouseCount(c.greenhouse)
-      else if (c.lever)  hiring = await fetchLeverCount(c.lever)
+      if (c.greenhouse)      hiring = await fetchGreenhouseCount(c.greenhouse)
+      else if (c.lever)      hiring = await fetchLeverCount(c.lever)
+      else if (c.smartrecruiters) hiring = await fetchSmartRecruitersCount(c.smartrecruiters)
     } catch (err) {
       errors.push(`${c.name}/hiring: ${err.message}`)
     }

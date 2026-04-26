@@ -345,13 +345,14 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
   );
   debugLog('DATA', `Media raw: ${companies.map((c, i) => `${c.name}=${mediaRaw[i]}`).join(', ')}`);
 
-  // ── 2. Hiring — Greenhouse / Lever ───────────────────────────────────────
+  // ── 2. Hiring — Greenhouse / Lever / SmartRecruiters ─────────────────────
   report('Checking job boards…', 2, 5);
   debugLog('API', `Fetching job board counts for ${companies.length} companies`);
   const hiringRaw = await Promise.all(
     companies.map(c => {
-      if (c.greenhouse) return fetchGreenhouseCount(c.greenhouse);
-      if (c.lever)      return fetchLeverCount(c.lever);
+      if (c.greenhouse)     return fetchGreenhouseCount(c.greenhouse);
+      if (c.lever)          return fetchLeverCount(c.lever);
+      if (c.smartrecruiters) return fetchSmartRecruitersCount(c.smartrecruiters);
       return Promise.resolve(0);
     })
   );
@@ -473,6 +474,22 @@ async function fetchLeverCount(slug) {
     return Array.isArray(json) ? json.length : 0;
   } catch (e) {
     debugLog('ERROR', `Lever fetch failed for ${slug}: ${e.message}`);
+    return 0;
+  }
+}
+
+async function fetchSmartRecruitersCount(companyId) {
+  try {
+    debugLog('API', `Fetching SmartRecruiters jobs for ${companyId}`);
+    const res = await fetch(`https://api.smartrecruiters.com/v1/companies/${companyId}/postings`);
+    if (!res.ok) {
+      debugLog('ERROR', `SmartRecruiters ${res.status} for ${companyId}`);
+      return 0;
+    }
+    const json = await res.json();
+    return json.totalFound ?? 0;
+  } catch (e) {
+    debugLog('ERROR', `SmartRecruiters fetch failed for ${companyId}: ${e.message}`);
     return 0;
   }
 }
