@@ -65,7 +65,7 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function fetchPage(rocketName, offset) {
+async function fetchPage(rocketName, offset, attempt = 1) {
   const params = new URLSearchParams({
     rocket__configuration__name: rocketName,
     limit: PAGE_SIZE,
@@ -77,11 +77,13 @@ async function fetchPage(rocketName, offset) {
   const res = await fetch(`${BASE_URL}/launches/?${params}`)
 
   if (res.status === 429) {
+    if (attempt >= 3) {
+      throw new Error(`Rate limited 3 times on offset=${offset} — quota exhausted, resume later`)
+    }
     const retryAfter = parseInt(res.headers.get('Retry-After') || '60', 10)
-    console.log(`  Rate limited — waiting ${retryAfter}s before retrying...`)
+    console.log(`  Rate limited (attempt ${attempt}/3) — waiting ${retryAfter}s...`)
     await sleep(retryAfter * 1000)
-    // Retry once after waiting
-    return fetchPage(rocketName, offset)
+    return fetchPage(rocketName, offset, attempt + 1)
   }
 
   if (!res.ok) {
