@@ -207,7 +207,8 @@ export class RateLimitError extends Error {
 
 const ST_CACHE_KEY = 'st_signals_v1';
 const ST_LAST_FETCH_KEY = 'st_last_fetch';
-const ST_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const ST_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours (localStorage freshness)
+const ST_SUPABASE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (shared cache window)
 export const ST_MIN_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
 
 /** Return cached Space Terminal signals regardless of age (stale-while-revalidate). */
@@ -242,7 +243,7 @@ export function signalAgeMs() {
  * Read the freshest signal snapshot from Supabase.
  * Returns null if no snapshot exists or the most recent is older than maxAgeMs.
  */
-async function readSignalsFromSupabase(maxAgeMs = ST_CACHE_TTL_MS) {
+async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
   if (!supabase) return null;
   try {
     const { data, error } = await supabase
@@ -434,8 +435,9 @@ async function fetchWikiViews(title) {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const y = lastMonth.getFullYear();
     const m = String(lastMonth.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(y, lastMonth.getMonth() + 1, 0).getDate();
     const start = `${y}${m}01`;
-    const end   = `${y}${m}01`;
+    const end   = `${y}${m}${String(lastDay).padStart(2, '0')}`;
     const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/${encodeURIComponent(title)}/monthly/${start}/${end}`;
     const res = await fetch(url, { headers: { 'User-Agent': 'SpaceTerminal/1.0' } });
     if (!res.ok) return 0;

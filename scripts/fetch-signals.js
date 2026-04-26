@@ -112,8 +112,9 @@ async function fetchWikiViews(title) {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const y = lastMonth.getFullYear()
     const m = String(lastMonth.getMonth() + 1).padStart(2, '0')
+    const lastDay = new Date(y, lastMonth.getMonth() + 1, 0).getDate()
     const start = `${y}${m}01`
-    const end   = `${y}${m}01`
+    const end   = `${y}${m}${String(lastDay).padStart(2, '0')}`
     const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/${encodeURIComponent(title)}/monthly/${start}/${end}`
     const res = await fetch(url, { headers: { 'User-Agent': 'SpaceTerminal/1.0' } })
     if (!res.ok) return 0
