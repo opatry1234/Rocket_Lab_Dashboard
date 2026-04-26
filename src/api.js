@@ -252,18 +252,26 @@ export function signalAgeMs() {
  * Returns null if no snapshot exists or the most recent is older than maxAgeMs.
  */
 async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
-  if (!supabase) return null;
+  if (!supabase) {
+    debugLog('SUPABASE', 'Client is null — env vars missing from build');
+    return null;
+  }
   try {
     debugLog('SUPABASE', 'Reading signal_snapshots…');
     const { data, error } = await supabase
       .from('signal_snapshots')
-      .select('signals, created_at')
+      .select('id, signals, created_at')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (error || !data) {
-      debugLog('SUPABASE', 'No snapshot found');
+    if (error) {
+      debugLog('ERROR', `Supabase query error: ${error.code} — ${error.message}`);
+      debugLog('CACHE', 'Supabase stale/empty, checking localStorage…');
+      return null;
+    }
+    if (!data) {
+      debugLog('SUPABASE', 'No snapshot found (table empty or RLS blocking)');
       debugLog('CACHE', 'Supabase stale/empty, checking localStorage…');
       return null;
     }
@@ -276,9 +284,10 @@ async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
       debugLog('CACHE', 'Supabase stale/empty, checking localStorage…');
       return null;
     }
-    debugLog('SUPABASE', `Using Supabase snapshot id=${data.id ?? 'n/a'} age=${ageMin}min`);
+    debugLog('SUPABASE', `Using Supabase snapshot id=${data.id} age=${ageMin}min`);
     return data.signals;
-  } catch {
+  } catch (e) {
+    debugLog('ERROR', `Supabase threw: ${e?.message ?? String(e)}`);
     return null;
   }
 }
