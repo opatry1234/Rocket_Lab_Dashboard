@@ -82,6 +82,7 @@ export async function fetchLaunchesByRocket(rocketName, forceRefresh = false) {
 
 /** Read all launches for a rocket from the Supabase shared cache. Returns null if empty. */
 async function readLaunchesFromSupabase(rocketName) {
+  if (!supabase) return null;
   try {
     const { data, error } = await supabase
       .from('rocket_launches')
@@ -97,6 +98,7 @@ async function readLaunchesFromSupabase(rocketName) {
 
 /** Write launches for a rocket into the Supabase shared cache (upsert). */
 async function writeLaunchesToSupabase(rocketName, launches) {
+  if (!supabase) return;
   const rows = launches.map(l => ({
     rocket_name: rocketName,
     launch_id: l.id,
@@ -241,6 +243,7 @@ export function signalAgeMs() {
  * Returns null if no snapshot exists or the most recent is older than maxAgeMs.
  */
 async function readSignalsFromSupabase(maxAgeMs = ST_CACHE_TTL_MS) {
+  if (!supabase) return null;
   try {
     const { data, error } = await supabase
       .from('signal_snapshots')
@@ -262,6 +265,7 @@ async function readSignalsFromSupabase(maxAgeMs = ST_CACHE_TTL_MS) {
 
 /** Write a signal snapshot to Supabase. Fire-and-forget — errors are swallowed. */
 async function writeSignalsToSupabase(signals) {
+  if (!supabase) return;
   try {
     await supabase.from('signal_snapshots').insert({ signals });
   } catch {
