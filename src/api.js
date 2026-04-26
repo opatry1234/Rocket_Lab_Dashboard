@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient'
+
 const BASE_URL = 'https://ll.thespacedevs.com/2.3.0';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -34,8 +36,9 @@ async function fetchPageForRocket(rocketName, offset = 0) {
 }
 
 /**
- * Fetch all launches for any rocket by name from LL2, paginating until exhausted.
- * Results are cached in localStorage per rocket for CACHE_TTL_MS.
+ * Fetch all launches for any rocket by name.
+ * First checks Supabase shared cache; falls back to LL2 API and writes results back.
+ * Also caches in localStorage per rocket for CACHE_TTL_MS.
  *
  * @param {string} rocketName - LL2 rocket configuration name (e.g. 'Electron', 'Falcon 9')
  * @param {boolean} [forceRefresh=false] - Bypass cache and re-fetch live data.
@@ -45,10 +48,19 @@ export async function fetchLaunchesByRocket(rocketName, forceRefresh = false) {
   const key = rocketCacheKey(rocketName);
 
   if (!forceRefresh) {
-    const cached = readCacheByKey(key);
-    if (cached) return cached;
+    // 1. Check localStorage (fast, avoids even a Supabase round-trip)
+    const localCached = readCacheByKey(key);
+    if (localCached) return localCached;
+
+    // 2. Check Supabase shared cache
+    const sbLaunches = await readLaunchesFromSupabase(rocketName);
+    if (sbLaunches) {
+      writeCacheByKey(key, sbLaunches);
+      return sbLaunches;
+    }
   }
 
+  // 3. Fall back to LL2 API
   const launches = [];
   let offset = 0;
   let total = null;
@@ -61,7 +73,40 @@ export async function fetchLaunchesByRocket(rocketName, forceRefresh = false) {
   } while (offset < total);
 
   writeCacheByKey(key, launches);
+
+  // Write to Supabase in the background (don't block the caller)
+  writeLaunchesToSupabase(rocketName, launches).catch(() => {});
+
   return launches;
+}
+
+/** Read all launches for a rocket from the Supabase shared cache. Returns null if empty. */
+async function readLaunchesFromSupabase(rocketName) {
+  try {
+    const { data, error } = await supabase
+      .from('rocket_launches')
+      .select('data')
+      .eq('rocket_name', rocketName);
+
+    if (error || !data || data.length === 0) return null;
+    return data.map(row => row.data);
+  } catch {
+    return null;
+  }
+}
+
+/** Write launches for a rocket into the Supabase shared cache (upsert). */
+async function writeLaunchesToSupabase(rocketName, launches) {
+  const rows = launches.map(l => ({
+    rocket_name: rocketName,
+    launch_id: l.id,
+    data: l,
+    fetched_at: new Date().toISOString(),
+  }));
+
+  await supabase
+    .from('rocket_launches')
+    .upsert(rows, { onConflict: 'rocket_name,launch_id' });
 }
 
 export async function fetchAllElectronLaunches(forceRefresh = false) {
@@ -192,12 +237,61 @@ export function signalAgeMs() {
 }
 
 /**
+ * Read the freshest signal snapshot from Supabase.
+ * Returns null if no snapshot exists or the most recent is older than maxAgeMs.
+ */
+async function readSignalsFromSupabase(maxAgeMs = ST_CACHE_TTL_MS) {
+  try {
+    const { data, error } = await supabase
+      .from('signal_snapshots')
+      .select('signals, created_at')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    const ageMs = Date.now() - new Date(data.created_at).getTime();
+    if (ageMs > maxAgeMs) return null;
+
+    return data.signals;
+  } catch {
+    return null;
+  }
+}
+
+/** Write a signal snapshot to Supabase. Fire-and-forget — errors are swallowed. */
+async function writeSignalsToSupabase(signals) {
+  try {
+    await supabase.from('signal_snapshots').insert({ signals });
+  } catch {
+    // Non-fatal — localStorage still has the data
+  }
+}
+
+/**
  * Fetch fresh Space Terminal signals for all companies.
+ * Cache hierarchy:
+ *   1. Supabase snapshot (< 6h old) → use it, no API calls
+ *   2. Existing fresh localStorage → use it
+ *   3. Direct API fetch → write to both localStorage and Supabase
+ *
  * Calls onProgress(message, step, total) as each source is queried.
  * Returns a signals map: { [companyId]: { media, hiring, buzz, investment, operations } }
  */
 export async function fetchSpaceTerminalSignals(companies, onProgress) {
   const report = (msg, step, total) => onProgress?.(msg, step, total);
+
+  // ── 0. Try Supabase shared cache first ────────────────────────────────────
+  report('Checking shared cache…', 0, 5);
+  const sbSignals = await readSignalsFromSupabase();
+  if (sbSignals) {
+    // Populate localStorage too so subsequent page loads are instant
+    writeCacheByKey(ST_CACHE_KEY, sbSignals);
+    try { localStorage.setItem(ST_LAST_FETCH_KEY, String(Date.now())); } catch {}
+    report('Loaded from shared cache', 5, 5);
+    return sbSignals;
+  }
 
   // Compute 30-days-ago timestamp
   const since30d = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
@@ -226,13 +320,13 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
     companies.map(c => fetchHNCount(c.hnQuery, since30d))
   );
 
-  // ── 4. Investment proxy — Wikipedia pageviews ─────────────────────────────
+  // ── 4. Investment proxy — Wikipedia pageviews (last full month) ───────────
   report('Measuring web interest…', 4, 5);
   const investRaw = await Promise.all(
     companies.map(c => fetchWikiViews(c.wikiTitle))
   );
 
-  // ── 5. Operations — LL2 (12-month launch count) ───────────────────────────
+  // ── 5. Operations — LL2 from Supabase cache (no live LL2 calls) ──────────
   report('Pulling launch cadence…', 5, 5);
   const opsRaw = await Promise.all(
     companies.map(c => fetchRecentLaunchCount(c.ll2Rockets))
@@ -273,6 +367,9 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
   // Persist to localStorage
   writeCacheByKey(ST_CACHE_KEY, signals);
   try { localStorage.setItem(ST_LAST_FETCH_KEY, String(Date.now())); } catch {}
+
+  // Write to Supabase in the background so next visitor skips the API calls
+  writeSignalsToSupabase(signals).catch(() => {});
 
   return signals;
 }
@@ -327,10 +424,12 @@ async function fetchHNCount(query, sinceTimestamp) {
 
 async function fetchWikiViews(title) {
   try {
-    // Get the last full month's pageviews
+    // Use last full month — current month data is incomplete and Wikimedia
+    // returns 0 for months with no complete bucket yet
     const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0'); // current month
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const y = lastMonth.getFullYear();
+    const m = String(lastMonth.getMonth() + 1).padStart(2, '0');
     const start = `${y}${m}01`;
     const end   = `${y}${m}01`;
     const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents/${encodeURIComponent(title)}/monthly/${start}/${end}`;
@@ -345,18 +444,18 @@ async function fetchWikiViews(title) {
 }
 
 async function fetchRecentLaunchCount(rocketNames) {
-  // ONLY use already-cached LL2 data — never make fresh LL2 calls here.
-  // This prevents the Space Terminal signal fetch from burning the 15 req/hr
-  // LL2 free-tier quota that the Electron/vehicle pages need.
-  // Ops scores populate naturally as users visit vehicle pages and LL2 data gets cached.
+  // Check Supabase cache first, then fall back to localStorage.
+  // Never makes live LL2 calls — preserves the 15 req/hr free-tier quota.
   if (!rocketNames?.length) return 0;
   const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
   let total = 0;
   for (const name of rocketNames) {
     try {
-      const cached = readStaleCacheByKey(rocketCacheKey(name));
-      if (cached) {
-        total += cached.filter(
+      // Prefer Supabase shared cache
+      const sbLaunches = await readLaunchesFromSupabase(name);
+      const source = sbLaunches ?? readStaleCacheByKey(rocketCacheKey(name));
+      if (source) {
+        total += source.filter(
           l => l.net && l.net >= since &&
                l.status?.abbrev !== 'TBD' &&
                l.status?.abbrev !== 'Go' &&
