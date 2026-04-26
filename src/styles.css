@@ -53,7 +53,7 @@ body a {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #FF4B12;
+  background: linear-gradient(135deg, #00AAFF, #7B61FF);
   color: #fff;
   font-size: 0.72rem;
   letter-spacing: 0.04em;
@@ -1300,4 +1300,410 @@ body a {
   .neutron-bar-label {
     white-space: normal;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SPACE TERMINAL — Hamburger nav + drawer
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Replace old tab nav with hamburger */
+.app-nav-brand {
+  text-decoration: none;
+}
+
+.st-hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.st-hamburger:hover { background: rgba(255,255,255,0.05); border-color: var(--muted); }
+.st-hamburger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+
+/* Drawer overlay */
+.st-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  animation: fadeIn 0.15s ease;
+}
+
+/* Drawer panel */
+.st-drawer {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 300px;
+  height: 100vh;
+  background: #111827;
+  border-left: 1px solid var(--border);
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+}
+.st-drawer-open { right: 0; }
+
+.st-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.st-drawer-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.st-drawer-close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+.st-drawer-close:hover { color: var(--text); }
+
+.st-drawer-links {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.st-drawer-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 20px;
+  text-decoration: none;
+  transition: background 0.12s;
+}
+.st-drawer-link:hover { background: rgba(255,255,255,0.04); }
+.st-drawer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.st-drawer-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.2;
+}
+.st-drawer-tag {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.st-drawer-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+}
+.st-drawer-home {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.st-drawer-home:hover { color: var(--text); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SPACE TERMINAL — Main page
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.st-icon {
+  background: rgba(0,170,255,0.12) !important;
+  color: #00AAFF !important;
+}
+
+.st-gradient-title {
+  background: linear-gradient(90deg, #00AAFF, #7B61FF);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+}
+
+/* Refresh area */
+.st-refresh-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.st-fetch-time {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.st-up-to-date {
+  font-size: 0.78rem;
+  color: #7EE8A2;
+  padding: 4px 10px;
+  background: rgba(126,232,162,0.1);
+  border-radius: 12px;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Status bar */
+.st-status-bar {
+  background: rgba(0,170,255,0.08);
+  border-bottom: 1px solid rgba(0,170,255,0.15);
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.st-status-msg {
+  font-size: 0.8rem;
+  color: #00AAFF;
+  flex-shrink: 0;
+}
+.st-status-progress {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.st-status-fill {
+  height: 100%;
+  background: #00AAFF;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+/* Loading skeleton */
+.st-loading-signals { padding: 24px; }
+.st-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+.st-loading-card {
+  background: var(--card);
+  border-radius: 8px;
+  border-top: 3px solid;
+  padding: 16px;
+  height: 100px;
+}
+.st-loading-bar {
+  height: 12px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  animation: pulse 1.4s infinite;
+}
+.st-loading-bar-sm { height: 8px; width: 60%; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1;   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SPACE TERMINAL — Company page
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.st-back-link {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.st-back-link:hover { color: var(--text); border-color: var(--muted); }
+
+.st-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 32px 0 16px;
+}
+
+/* Vehicle grid */
+.st-vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.st-vehicle-card {
+  background: var(--card);
+  border-radius: 8px;
+  border-top: 3px solid;
+  padding: 20px;
+  text-decoration: none;
+  display: block;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.st-vehicle-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.st-vehicle-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.st-vehicle-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.st-vehicle-tagline {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 14px;
+  line-height: 1.4;
+}
+.st-vehicle-specs {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-bottom: 12px;
+}
+.st-vehicle-spec-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  padding: 4px 0;
+}
+.st-spec-key { color: var(--muted); text-transform: capitalize; }
+.st-spec-val { color: var(--text); font-weight: 500; }
+
+.st-vehicle-progress-wrap { margin-bottom: 12px; }
+.st-vehicle-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.st-vehicle-progress-bar {
+  height: 5px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.st-vehicle-progress-fill {
+  height: 100%;
+  background: var(--yellow);
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.st-vehicle-cta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 10px;
+  display: block;
+}
+.st-vehicle-card:hover .st-vehicle-cta { color: var(--text); }
+
+/* Domain bars on company page */
+.os-domain-bars { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
+.os-domain-bar-row {}
+.os-domain-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.os-domain-bar-track {
+  height: 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.os-domain-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SPACE TERMINAL — Vehicle page (generic usable)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.st-mission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.st-mission-row {
+  display: grid;
+  grid-template-columns: 14px 1fr 100px 80px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+.st-mission-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.st-mission-name { color: var(--text); }
+.st-mission-date { color: var(--muted); text-align: right; }
+.st-mission-status { font-weight: 500; text-align: right; }
+
+/* Error page */
+.error-page {
+  padding: 48px 24px;
+  text-align: center;
+}
+.error-page h2 { color: var(--text); margin-bottom: 16px; }
+.back-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.back-link:hover { color: var(--text); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SPACE TERMINAL — Responsive
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  .st-refresh-area { gap: 8px; }
+  .st-vehicle-grid { grid-template-columns: 1fr; }
+  .st-mission-row  { grid-template-columns: 14px 1fr 70px; }
+  .st-mission-date { display: none; }
+  .st-drawer { width: 280px; }
 }

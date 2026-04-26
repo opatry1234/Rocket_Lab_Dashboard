@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import {
   BarChart, Bar, LineChart, Line,
   PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid,
@@ -13,8 +13,10 @@ import {
   UpcomingPage,
 } from './DetailPages';
 import NeutronPage from './NeutronPage';
-import CompetitionPage from './CompetitionPage';
-import { OrbitalSignalDashboard, CompanyProfilePage } from './OrbitalSignalPage';
+import SpaceTerminalPage from './SpaceTerminalPage';
+import CompanyPage from './CompanyPage';
+import VehiclePage from './VehiclePage';
+import { COMPANIES } from './spaceTerminalData';
 import {
   C,
   ErrorPage,
@@ -78,29 +80,69 @@ function ChartCard({ title, wide, children }) {
 }
 
 function AppNav() {
+  const [open, setOpen] = useState(false);
+  const drawerRef = useRef(null);
+  const location = useLocation();
+
+  // Close drawer on route change
+  useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (drawerRef.current && !drawerRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
   return (
-    <div className="app-nav">
-      <div className="app-nav-inner">
-        <div className="app-nav-brand">
-          <span className="app-nav-mark">RL</span>
-          <span className="app-nav-brand-text">Rocket Lab Dashboard</span>
+    <>
+      <div className="app-nav">
+        <div className="app-nav-inner">
+          <Link to="/" className="app-nav-brand">
+            <span className="app-nav-mark">ST</span>
+            <span className="app-nav-brand-text">Space Terminal</span>
+          </Link>
+          <button
+            className="st-hamburger"
+            onClick={() => setOpen(o => !o)}
+            aria-label="Open company menu"
+            aria-expanded={open}
+          >
+            <span /><span /><span />
+          </button>
         </div>
-        <nav className="app-nav-tabs" aria-label="Primary navigation">
-          <NavLink to="/" end className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
-            Electron
-          </NavLink>
-          <NavLink to="/neutron" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
-            Neutron
-          </NavLink>
-          <NavLink to="/competition" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
-            Industry Competition
-          </NavLink>
-          <NavLink to="/orbital-signal" className={({ isActive }) => `app-nav-tab${isActive ? ' active' : ''}`}>
-            Orbital Signal
-          </NavLink>
-        </nav>
       </div>
-    </div>
+
+      {/* Drawer overlay */}
+      {open && <div className="st-drawer-overlay" onClick={() => setOpen(false)} />}
+
+      {/* Drawer */}
+      <nav
+        ref={drawerRef}
+        className={`st-drawer${open ? ' st-drawer-open' : ''}`}
+        aria-label="Company navigation"
+      >
+        <div className="st-drawer-header">
+          <span className="st-drawer-title">Companies</span>
+          <button className="st-drawer-close" onClick={() => setOpen(false)} aria-label="Close">✕</button>
+        </div>
+        <div className="st-drawer-links">
+          {COMPANIES.map(c => (
+            <Link key={c.id} to={`/company/${c.id}`} className="st-drawer-link">
+              <span className="st-drawer-dot" style={{ background: c.color }} />
+              <span className="st-drawer-name">{c.name}</span>
+              <span className="st-drawer-tag">{c.tagline}</span>
+            </Link>
+          ))}
+        </div>
+        <div className="st-drawer-footer">
+          <Link to="/" className="st-drawer-home">⬡ Space Terminal Home</Link>
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -194,15 +236,18 @@ function ElectronDashboard() {
       <header className="hdr">
         <div className="hdr-inner">
           <div className="hdr-brand">
-            <span className="hdr-icon" aria-hidden="true">RL</span>
+            <span className="hdr-icon" style={{ background: '#FF4B1222', color: '#FF4B12' }} aria-hidden="true">EL</span>
             <div>
-              <h1 className="hdr-title">Electron Mission Dashboard</h1>
+              <h1 className="hdr-title" style={{ color: '#FF4B12' }}>Electron Mission Dashboard</h1>
               <p className="hdr-sub">Rocket Lab analytics · Launch Library 2</p>
             </div>
           </div>
-          <span className="hdr-date">
-            Updated {new Date(meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span className="hdr-date">
+              Updated {new Date(meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+            <Link to="/company/rocket-lab" className="st-back-link">← Rocket Lab</Link>
+          </div>
         </div>
       </header>
 
@@ -383,15 +428,20 @@ export default function App() {
     <>
       <AppNav />
       <Routes>
-        <Route path="/" element={<ElectronDashboard />} />
-        <Route path="/neutron" element={<NeutronPage />} />
-        <Route path="/launches" element={<TotalLaunchesPage />} />
+        {/* ── Space Terminal (main page) ── */}
+        <Route path="/" element={<SpaceTerminalPage />} />
+
+        {/* ── Company + vehicle hierarchy ── */}
+        <Route path="/company/rocket-lab/electron" element={<ElectronDashboard />} />
+        <Route path="/company/rocket-lab/neutron"  element={<NeutronPage />} />
+        <Route path="/company/:slug/:vehicleSlug"   element={<VehiclePage />} />
+        <Route path="/company/:slug"               element={<CompanyPage />} />
+
+        {/* ── Electron sub-pages (keep for backward compat & KPI links) ── */}
+        <Route path="/launches"     element={<TotalLaunchesPage />} />
         <Route path="/success-rate" element={<SuccessRatePage />} />
-        <Route path="/upcoming" element={<UpcomingPage />} />
+        <Route path="/upcoming"     element={<UpcomingPage />} />
         <Route path="/launch-sites" element={<LaunchSitesPage />} />
-        <Route path="/competition" element={<CompetitionPage />} />
-        <Route path="/orbital-signal" element={<OrbitalSignalDashboard />} />
-        <Route path="/orbital-signal/:companyId" element={<CompanyProfilePage />} />
       </Routes>
     </>
   );

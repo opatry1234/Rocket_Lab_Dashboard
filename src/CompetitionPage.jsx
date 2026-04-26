@@ -5,7 +5,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { useLaunchData } from './DataContext';
-import { fetchLaunchesByRocket } from './api';
+import { fetchLaunchesByRocket, getStaleLaunchesByRocket } from './api';
 import { isFlown, statusOf } from './processors';
 import { C, ErrorPage, LoadingPage, PageFooter, tickStyle, tt } from './shared';
 
@@ -102,18 +102,31 @@ function CumulativeTooltip({ active, payload, label }) {
 
 export default function CompetitionPage() {
   const { launches: electronLaunches, loading: electronLoading, err: electronErr } = useLaunchData();
-  const [compLaunches, setCompLaunches] = useState(null);
-  const [compLoading, setCompLoading] = useState(true);
+  // Seed with stale cache so repeat visitors see data instantly.
+  const [compLaunches, setCompLaunches] = useState(() => {
+    const falcon9 = getStaleLaunchesByRocket('Falcon 9');
+    const terranR = getStaleLaunchesByRocket('Terran R');
+    return falcon9 && terranR ? { falcon9, terranR } : null;
+  });
+  const [compLoading, setCompLoading] = useState(() => {
+    return !(getStaleLaunchesByRocket('Falcon 9') && getStaleLaunchesByRocket('Terran R'));
+  });
   const [compErr, setCompErr] = useState(null);
 
   useEffect(() => {
+    const hadStale = !!compLaunches;
     Promise.all([
       fetchLaunchesByRocket('Falcon 9'),
       fetchLaunchesByRocket('Terran R'),
     ])
-      .then(([falcon9, terranR]) => setCompLaunches({ falcon9, terranR }))
-      .catch(setCompErr)
-      .finally(() => setCompLoading(false));
+      .then(([falcon9, terranR]) => {
+        setCompLaunches({ falcon9, terranR });
+        setCompLoading(false);
+      })
+      .catch(e => {
+        if (!hadStale) setCompErr(e);
+        setCompLoading(false);
+      });
   }, []);
 
   if (electronLoading || compLoading) return <LoadingPage />;
