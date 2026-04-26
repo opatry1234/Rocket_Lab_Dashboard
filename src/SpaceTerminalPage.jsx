@@ -10,7 +10,7 @@ import {
 } from './spaceTerminalData';
 import {
   fetchSpaceTerminalSignals,
-  getStaleSignals, getFreshSignals, signalAgeMs, ST_MIN_REFRESH_MS,
+  getStaleSignals, signalAgeMs, ST_MIN_REFRESH_MS,
 } from './api';
 import { debugLog } from './debugLog';
 import { C, tt, tickStyle, PageFooter } from './shared';
@@ -221,17 +221,9 @@ export default function SpaceTerminalPage() {
     setStatusTotal(total);
   }, []);
 
-  // On mount: fetch fresh data in background if cache is stale
+  // On mount: always run through fetchSpaceTerminalSignals which checks
+  // Supabase first, then localStorage, then live APIs.
   useEffect(() => {
-    const fresh = getFreshSignals();
-    if (fresh) {
-      debugLog('CACHE', 'Loaded fresh signals from localStorage');
-      setSnapshot(fresh);
-      setLoading(false);
-      return;
-    }
-    debugLog('CACHE', 'No fresh localStorage cache — fetching live signals');
-    // No fresh data — fetch
     setLoading(true);
     fetchSpaceTerminalSignals(COMPANIES, onProgress)
       .then(signals => {

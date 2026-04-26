@@ -213,7 +213,7 @@ export class RateLimitError extends Error {
 
 // ─── Space Terminal Signal APIs ───────────────────────────────────────────────
 
-const ST_CACHE_KEY = 'st_signals_v1';
+const ST_CACHE_KEY = 'st_signals_v2';
 const ST_LAST_FETCH_KEY = 'st_last_fetch';
 const ST_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours (localStorage freshness)
 const ST_SUPABASE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours (shared cache window)
@@ -264,6 +264,7 @@ async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
 
     if (error || !data) {
       debugLog('SUPABASE', 'No snapshot found');
+      debugLog('CACHE', 'Supabase stale/empty, checking localStorage…');
       return null;
     }
 
@@ -272,9 +273,10 @@ async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
     if (ageMs > maxAgeMs) {
       const ageH = (ageMs / 3600000).toFixed(1);
       debugLog('WARN', `Snapshot stale (${ageH}h old > ${maxAgeMs / 3600000}h TTL), falling back`);
+      debugLog('CACHE', 'Supabase stale/empty, checking localStorage…');
       return null;
     }
-    debugLog('SUPABASE', `Got snapshot, age=${ageMin}min`);
+    debugLog('SUPABASE', `Using Supabase snapshot id=${data.id ?? 'n/a'} age=${ageMin}min`);
     return data.signals;
   } catch {
     return null;
@@ -315,6 +317,20 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
     report('Loaded from shared cache', 5, 5);
     return sbSignals;
   }
+
+  // ── 1. Fall back to fresh localStorage ───────────────────────────────────
+  try {
+    const raw = localStorage.getItem(ST_CACHE_KEY);
+    if (raw) {
+      const { timestamp, data } = JSON.parse(raw);
+      if (data && Date.now() - timestamp <= ST_CACHE_TTL_MS) {
+        const ageMin = Math.round((Date.now() - timestamp) / 60000);
+        debugLog('CACHE', `Using fresh localStorage snapshot age=${ageMin}min`);
+        return data;
+      }
+    }
+  } catch {}
+  debugLog('CACHE', 'localStorage stale/empty — fetching live signals');
 
   // Compute 30-days-ago timestamp
   const since30d = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
