@@ -481,12 +481,24 @@ export function velocityColor(label) {
   }
 }
 
+// Continuous red→yellow→green gradient mapped to 0–100.
+// Returns a hex string so callers can append alpha bytes (e.g. `${color}1A`).
+function hslToHex(h, s, l) {
+  s /= 100;
+  l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const c = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * c).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 export function scoreColor(score) {
-  if (score >= 85) return '#00D2A0';
-  if (score >= 70) return '#7EE8A2';
-  if (score >= 55) return '#FFB800';
-  if (score >= 40) return '#FF8A60';
-  return '#FF4B4B';
+  const clamped = Math.max(0, Math.min(100, score));
+  // hue: 0° = red, 120° = green; 0→100 maps linearly across that arc
+  return hslToHex(clamped * 1.2, 80, 52);
 }
 
 export function getCompany(id) {
