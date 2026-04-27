@@ -88,6 +88,7 @@ export const COMPANIES = [
     tagline: 'New Glenn, New Shepard, BE-4',
     greenhouse: null,
     lever: 'blueorigin',
+    hiringUnavailable: true, // enterprise ATS behind auth, no public API
     headcount: 11000,
     usaSpendingQuery: 'Blue Origin',
     redditQuery: 'Blue Origin',
@@ -108,6 +109,7 @@ export const COMPANIES = [
     greenhouse: null,
     lever: null,
     smartrecruiters: 'FireflyAerospace',
+    hiringUnavailable: true, // enterprise ATS behind auth, no public API
     headcount: 300,
     usaSpendingQuery: 'Firefly Aerospace',
     redditQuery: 'Firefly Aerospace',

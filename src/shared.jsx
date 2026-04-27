@@ -126,6 +126,27 @@ export function DetailHeader({ title, subtitle }) {
   );
 }
 
+/**
+ * Renders: ← Space Terminal › SpaceX › Starship
+ * items: [{ label, to? }] — last item has no `to` (current page, not clickable)
+ */
+export function Breadcrumbs({ items }) {
+  return (
+    <nav className="st-breadcrumb" aria-label="Breadcrumb">
+      <span className="st-bc-arrow">←</span>
+      {items.map((item, i) => (
+        <React.Fragment key={i}>
+          {i > 0 && <span className="st-bc-sep">›</span>}
+          {item.to
+            ? <Link to={item.to} className="st-bc-link">{item.label}</Link>
+            : <span className="st-bc-current">{item.label}</span>
+          }
+        </React.Fragment>
+      ))}
+    </nav>
+  );
+}
+
 export function PageFooter({ note }) {
   return (
     <footer className="ftr">

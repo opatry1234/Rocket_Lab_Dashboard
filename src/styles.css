@@ -96,8 +96,8 @@ body a {
 .hdr-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 32px;
-  height: 72px;
+  padding: 12px 32px;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1706,4 +1706,69 @@ body a {
   .st-mission-row  { grid-template-columns: 14px 1fr 70px; }
   .st-mission-date { display: none; }
   .st-drawer { width: 280px; }
+}
+
+/* ─── Breadcrumb navigation ───────────────────── */
+
+.st-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.st-bc-arrow {
+  color: #8B9BC0;
+  font-size: 0.68rem;
+}
+
+.st-bc-sep {
+  color: #2A3A58;
+  font-size: 0.68rem;
+}
+
+.st-bc-link {
+  color: #00AAFF;
+  font-size: 0.68rem;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.st-bc-link:hover {
+  color: #E8EAF0;
+  text-decoration: underline;
+}
+
+.st-bc-current {
+  color: #8B9BC0;
+  font-size: 0.68rem;
+}
+
+/* ─── Scan animation (fake refresh) ──────────── */
+
+.os-heat-domain-header.os-scan-col {
+  color: #00D2A0;
+  background: rgba(0, 210, 160, 0.08);
+  animation: os-scan-pulse 0.7s ease-in-out infinite;
+}
+
+.os-heat-cell.os-scan-col {
+  transform: scale(1.04);
+  box-shadow: 0 0 10px rgba(0, 210, 160, 0.28);
+  z-index: 1;
+  position: relative;
+}
+
+@keyframes os-scan-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 210, 160, 0); }
+  50%       { box-shadow: 0 0 14px rgba(0, 210, 160, 0.4); }
+}
+
+.kpi-card.kpi-scanning {
+  animation: kpi-scan-pulse 0.65s ease-in-out infinite;
+}
+
+@keyframes kpi-scan-pulse {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 210, 160, 0); }
+  50%       { box-shadow: 0 0 18px rgba(0, 210, 160, 0.35); }
 }

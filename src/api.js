@@ -292,6 +292,29 @@ async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
   }
 }
 
+/**
+ * Fetch the two most-recent signal snapshots from Supabase.
+ * Used by the fake-refresh animation: show [1] on initial render, animate to [0].
+ * Returns { current, previous } — either may be null.
+ */
+export async function readTwoSignalSnapshots() {
+  if (!supabase) return { current: null, previous: null };
+  try {
+    const { data, error } = await supabase
+      .from('signal_snapshots')
+      .select('id, signals, created_at')
+      .order('created_at', { ascending: false })
+      .limit(2);
+    if (error || !data?.length) return { current: null, previous: null };
+    return {
+      current:  data[0]?.signals ?? null,
+      previous: data[1]?.signals ?? null,
+    };
+  } catch {
+    return { current: null, previous: null };
+  }
+}
+
 /** Write a signal snapshot to Supabase. Fire-and-forget — errors are swallowed. */
 async function writeSignalsToSupabase(signals) {
   if (!supabase) return;

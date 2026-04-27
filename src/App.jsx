@@ -18,6 +18,7 @@ import CompanyPage from './CompanyPage';
 import VehiclePage from './VehiclePage';
 import { COMPANIES } from './spaceTerminalData';
 import {
+  Breadcrumbs,
   C,
   ErrorPage,
   LoadingPage,
@@ -240,14 +241,16 @@ function ElectronDashboard() {
             <div>
               <h1 className="hdr-title" style={{ color: '#FF4B12' }}>Electron Mission Dashboard</h1>
               <p className="hdr-sub">Rocket Lab analytics · Launch Library 2</p>
+              <Breadcrumbs items={[
+                { label: 'Space Terminal', to: '/' },
+                { label: 'Rocket Lab', to: '/company/rocket-lab' },
+                { label: 'Electron' },
+              ]} />
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <span className="hdr-date">
-              Updated {new Date(meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
-            <Link to="/company/rocket-lab" className="st-back-link">← Rocket Lab</Link>
-          </div>
+          <span className="hdr-date">
+            Updated {new Date(meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
         </div>
       </header>
 

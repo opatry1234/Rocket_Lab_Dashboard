@@ -6,7 +6,7 @@ import {
 import { COMPANIES, VEHICLES, getCompany, getVehicle } from './spaceTerminalData';
 import { fetchLaunchesByRocket, getStaleLaunchesByRocket } from './api';
 import { isFlown, statusOf } from './processors';
-import { C, tt, tickStyle, ErrorPage, LoadingPage, PageFooter } from './shared';
+import { Breadcrumbs, C, tt, tickStyle, ErrorPage, LoadingPage, PageFooter } from './shared';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +54,12 @@ function MilestoneBar({ milestone }) {
 // ─── In-production vehicle ─────────────────────────────────────────────────────
 
 function InProductionVehicle({ company, vehicle }) {
+  const [animated, setAnimated] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setAnimated(true), 80);
+    return () => clearTimeout(t);
+  }, []);
+
   const pct = vehicle.overallPct ?? 0;
   const col = pct >= 80 ? C.green : pct >= 50 ? C.yellow : C.orange;
 
@@ -68,14 +74,29 @@ function InProductionVehicle({ company, vehicle }) {
             <div>
               <h1 className="hdr-title" style={{ color: company.color }}>{vehicle.name}</h1>
               <p className="hdr-sub">{vehicle.tagline}</p>
+              <Breadcrumbs items={[
+                { label: 'Space Terminal', to: '/' },
+                { label: company.name, to: `/company/${company.id}` },
+                { label: vehicle.name },
+              ]} />
             </div>
           </div>
-          <Link to={`/company/${company.id}`} className="st-back-link">← {company.name}</Link>
         </div>
       </header>
 
+      {/* Neutron-style top progress bar */}
+      <div className="neutron-bar-wrap">
+        <div className="neutron-bar-inner">
+          <span className="neutron-bar-label">{vehicle.name}: Development Progress</span>
+          <div className="neutron-bar-track">
+            <div className="neutron-bar-fill" style={{ width: animated ? `${pct}%` : '0%' }} />
+            <span className="neutron-bar-pct">{pct}% Complete</span>
+          </div>
+        </div>
+      </div>
+
       <main className="main">
-        {/* Overall progress KPI */}
+        {/* KPI row */}
         <section className="kpi-row">
           <div className="kpi-card" style={{ borderTopColor: col }}>
             <div className="kpi-value" style={{ color: col }}>{pct}%</div>
@@ -89,20 +110,6 @@ function InProductionVehicle({ company, vehicle }) {
             </div>
           ))}
         </section>
-
-        {/* Progress bar */}
-        <div className="chart-card wide">
-          <p className="chart-heading">Overall Development Progress</p>
-          <div className="neutron-overall-bar-wrap">
-            <div className="neutron-overall-bar">
-              <div
-                className="neutron-overall-fill animated-fill"
-                style={{ width: `${pct}%`, background: col }}
-              />
-            </div>
-            <span className="neutron-overall-pct" style={{ color: col }}>{pct}%</span>
-          </div>
-        </div>
 
         {/* Milestone bars */}
         <div className="chart-card wide">
@@ -165,9 +172,13 @@ function UsableVehicle({ company, vehicle }) {
             <div>
               <h1 className="hdr-title" style={{ color: company.color }}>{vehicle.name}</h1>
               <p className="hdr-sub">{vehicle.tagline}</p>
+              <Breadcrumbs items={[
+                { label: 'Space Terminal', to: '/' },
+                { label: company.name, to: `/company/${company.id}` },
+                { label: vehicle.name },
+              ]} />
             </div>
           </div>
-          <Link to={`/company/${company.id}`} className="st-back-link">← {company.name}</Link>
         </div>
       </header>
 

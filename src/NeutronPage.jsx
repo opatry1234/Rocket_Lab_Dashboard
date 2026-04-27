@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { C, PageFooter } from './shared';
+import { Breadcrumbs, C, PageFooter } from './shared';
 
 const COMPLETION_PCT = 42;
 
@@ -93,6 +93,23 @@ export default function NeutronPage() {
 
   return (
     <div className="app">
+      <header className="hdr" style={{ borderBottomColor: C.green }}>
+        <div className="hdr-inner">
+          <div className="hdr-brand">
+            <span className="hdr-icon" style={{ background: `${C.green}22`, color: C.green }} aria-hidden="true">NT</span>
+            <div>
+              <h1 className="hdr-title" style={{ color: C.green }}>Neutron</h1>
+              <p className="hdr-sub">Medium-lift reusable launch vehicle · Rocket Lab</p>
+              <Breadcrumbs items={[
+                { label: 'Space Terminal', to: '/' },
+                { label: 'Rocket Lab', to: '/company/rocket-lab' },
+                { label: 'Neutron' },
+              ]} />
+            </div>
+          </div>
+        </div>
+      </header>
+
       <div className="neutron-bar-wrap">
         <div className="neutron-bar-inner">
           <span className="neutron-bar-label">Neutron: First Launch Readiness</span>

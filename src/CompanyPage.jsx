@@ -9,7 +9,7 @@ import {
   overallScore, scoreColor, velocityLabel, velocityColor,
 } from './spaceTerminalData';
 import { getStaleSignals } from './api';
-import { C, tt, PageFooter } from './shared';
+import { Breadcrumbs, C, tt, PageFooter } from './shared';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -117,9 +117,12 @@ export default function CompanyPage() {
             <div>
               <h1 className="hdr-title" style={{ color: company.color }}>{company.name}</h1>
               <p className="hdr-sub">{company.tagline} · Founded {company.founded} · {company.hq}</p>
+              <Breadcrumbs items={[
+                { label: 'Space Terminal', to: '/' },
+                { label: company.name },
+              ]} />
             </div>
           </div>
-          <Link to="/" className="st-back-link">← Space Terminal</Link>
         </div>
       </header>
 
