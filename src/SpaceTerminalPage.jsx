@@ -350,6 +350,19 @@ export default function SpaceTerminalPage() {
       )}
 
       <main className="main">
+        {/* Heat map — main feature, first */}
+        <div className="grid">
+          <div className="chart-card wide">
+            <p className="chart-heading">Signal Heat Map — click a domain header to highlight</p>
+            <HeatMap
+              snapshot={currentSnapshot}
+              prevSnapshot={prevSnapshot}
+              activeDomain={activeDomain}
+              setActiveDomain={setActiveDomain}
+            />
+          </div>
+        </div>
+
         {/* KPI row — company cards */}
         <section className="kpi-row comp-kpi-row">
           {COMPANIES.map(c => {
@@ -372,21 +385,10 @@ export default function SpaceTerminalPage() {
         </section>
 
         <div className="grid">
-          {/* Leaderboard — full width */}
+          {/* Leaderboard */}
           <div className="chart-card wide">
             <p className="chart-heading">Industry Leaderboard</p>
             <Leaderboard snapshot={currentSnapshot} prevSnapshot={prevSnapshot} />
-          </div>
-
-          {/* Heat map — full width */}
-          <div className="chart-card wide">
-            <p className="chart-heading">Signal Heat Map — click a domain header to highlight</p>
-            <HeatMap
-              snapshot={currentSnapshot}
-              prevSnapshot={prevSnapshot}
-              activeDomain={activeDomain}
-              setActiveDomain={setActiveDomain}
-            />
           </div>
         </div>
 
