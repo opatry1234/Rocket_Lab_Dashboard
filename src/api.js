@@ -347,81 +347,104 @@ export async function fetchSpaceTerminalSignals(companies, onProgress) {
     .toISOString().slice(0, 10);
 
   // ── 1. Media — Spaceflight News API ──────────────────────────────────────
-  report('Scanning news coverage…', 1, 5);
+  report('Scanning news coverage…', 1, 7);
   debugLog('API', `Fetching Spaceflight News counts for ${companies.length} companies since ${sinceDate}`);
   const mediaRaw = await Promise.all(
     companies.map(c => fetchSpaceNewsCount(c.name, sinceDate))
   );
   debugLog('DATA', `Media raw: ${companies.map((c, i) => `${c.name}=${mediaRaw[i]}`).join(', ')}`);
 
-  // ── 2. Hiring — Greenhouse / Lever / SmartRecruiters ─────────────────────
-  report('Checking job boards…', 2, 5);
+  // ── 2. Hiring — job count / headcount = growth rate ──────────────────────
+  report('Checking job boards…', 2, 7);
   debugLog('API', `Fetching job board counts for ${companies.length} companies`);
-  const hiringRaw = await Promise.all(
+  const jobCounts = await Promise.all(
     companies.map(c => {
-      if (c.greenhouse)     return fetchGreenhouseCount(c.greenhouse);
-      if (c.lever)          return fetchLeverCount(c.lever);
+      if (c.greenhouse)      return fetchGreenhouseCount(c.greenhouse);
+      if (c.lever)           return fetchLeverCount(c.lever);
       if (c.smartrecruiters) return fetchSmartRecruitersCount(c.smartrecruiters);
       return Promise.resolve(0);
     })
   );
-  debugLog('DATA', `Hiring raw: ${companies.map((c, i) => `${c.name}=${hiringRaw[i]}`).join(', ')}`);
-
-  // ── 3. Buzz — HN Algolia ─────────────────────────────────────────────────
-  report('Analyzing HN mentions…', 3, 5);
-  debugLog('API', `Fetching HN mention counts for ${companies.length} companies`);
-  const buzzRaw = await Promise.all(
-    companies.map(c => fetchHNCount(c.hnQuery, since30d))
+  // Growth rate: open positions as a fraction of existing headcount
+  const hiringRaw = companies.map((c, i) =>
+    (c.headcount > 0) ? jobCounts[i] / c.headcount : 0
   );
-  debugLog('DATA', `Buzz raw: ${companies.map((c, i) => `${c.name}=${buzzRaw[i]}`).join(', ')}`);
+  debugLog('DATA', `Hiring raw (growth rates): ${companies.map((c, i) => `${c.name}=${hiringRaw[i].toFixed(3)}`).join(', ')}`);
 
-  // ── 4. Investment proxy — Wikipedia pageviews (last full month) ───────────
-  report('Measuring web interest…', 4, 5);
+  // ── 3. Buzz — HN Algolia + Reddit (parallel) ─────────────────────────────
+  report('Analyzing buzz…', 3, 7);
+  debugLog('API', `Fetching HN + Reddit counts for ${companies.length} companies`);
+  const [hnCounts, redditCounts] = await Promise.all([
+    Promise.all(companies.map(c => fetchHNCount(c.hnQuery, since30d))),
+    Promise.all(companies.map(c => fetchRedditCount(c.redditQuery ?? c.name))),
+  ]);
+  const buzzRaw = companies.map((_, i) => hnCounts[i] + redditCounts[i]);
+  debugLog('DATA', `Buzz raw: ${companies.map((c, i) => `${c.name}=HN${hnCounts[i]}+R${redditCounts[i]}`).join(', ')}`);
+
+  // ── 4. Interest — Wikipedia pageviews (last full month) ──────────────────
+  report('Measuring web interest…', 4, 7);
   debugLog('API', `Fetching Wikipedia pageviews for ${companies.length} companies`);
   const investRaw = await Promise.all(
     companies.map(c => fetchWikiViews(c.wikiTitle))
   );
   debugLog('DATA', `Interest raw: ${companies.map((c, i) => `${c.name}=${investRaw[i]}`).join(', ')}`);
 
-  // ── 5. Operations — LL2 from Supabase cache (no live LL2 calls) ──────────
-  report('Pulling launch cadence…', 5, 5);
+  // ── 5. Ops sub-signals ────────────────────────────────────────────────────
+  // a) Launch count from Supabase cache
+  report('Pulling launch cadence…', 5, 7);
   debugLog('SUPABASE', `Reading launch cadence for ${companies.length} companies from cache`);
-  const opsRaw = await Promise.all(
+  const launchCounts = await Promise.all(
     companies.map(c => fetchRecentLaunchCount(c.ll2Rockets))
   );
-  debugLog('DATA', `Operations raw: ${companies.map((c, i) => `${c.name}=${opsRaw[i]}`).join(', ')}`);
+  debugLog('DATA', `Launches raw: ${companies.map((c, i) => `${c.name}=${launchCounts[i]}`).join(', ')}`);
 
-  // ── Normalize each domain 0–100 relative to max ───────────────────────────
-  report('Building intelligence…', 5, 5);
-  const normalize = (vals) => {
-    const max = Math.max(...vals.filter(v => v > 0), 1);
-    return vals.map(v => Math.min(100, Math.round((v / max) * 100)));
-  };
+  // b) Government contracts (USASpending) — total $ last 365 days
+  report('Checking government contracts…', 6, 7);
+  debugLog('API', `Fetching USASpending contracts for ${companies.length} companies`);
+  const contractValues = await Promise.all(
+    companies.map(c => fetchUSASpendingValue(c.usaSpendingQuery))
+  );
+  debugLog('DATA', `Contracts raw: ${companies.map((c, i) => `${c.name}=$${(contractValues[i]/1e6).toFixed(1)}M`).join(', ')}`);
 
-  const mediaNorm  = normalize(mediaRaw);
-  const hiringNorm = normalize(hiringRaw);
-  const buzzNorm   = normalize(buzzRaw);
-  const investNorm = normalize(investRaw);
-  const opsNorm    = normalize(opsRaw);
+  // ── Ops composite: market-share each sub-signal, then weight ─────────────
+  // 50% contracts, 30% launches, 20% hiring rate (growth signal leaks in)
+  const contractMs = marketShare(contractValues);
+  const launchMs   = marketShare(launchCounts);
+  const hiringForOpsMs = marketShare(hiringRaw);
+  const opsRaw = companies.map((_, i) =>
+    0.5 * contractMs[i] + 0.3 * launchMs[i] + 0.2 * hiringForOpsMs[i]
+  );
+  // opsRaw sums to 100 (0.5+0.3+0.2=1 × 100 each sub)
+
+  // ── Market-share normalization: each domain column sums to 100 ───────────
+  report('Building intelligence…', 7, 7);
+  const mediaScore  = marketShare(mediaRaw);
+  const hiringScore = marketShare(hiringRaw);
+  const buzzScore   = marketShare(buzzRaw);
+  const investScore = marketShare(investRaw);
+  const opsScore    = marketShare(opsRaw); // re-rounds the weighted floats
 
   const signals = {};
   companies.forEach((c, i) => {
     signals[c.id] = {
-      media:      mediaNorm[i],
-      hiring:     hiringNorm[i],
-      buzz:       buzzNorm[i],
-      investment: investNorm[i],
-      operations: opsNorm[i],
-      // Raw values stored for display/debugging
+      media:      mediaScore[i],
+      hiring:     hiringScore[i],
+      buzz:       buzzScore[i],
+      investment: investScore[i],
+      operations: opsScore[i],
       _raw: {
-        media:      mediaRaw[i],
-        hiring:     hiringRaw[i],
-        buzz:       buzzRaw[i],
-        investment: investRaw[i],
-        operations: opsRaw[i],
+        media:       mediaRaw[i],
+        hiring:      jobCounts[i],
+        hiringRate:  hiringRaw[i],
+        buzz:        buzzRaw[i],
+        hn:          hnCounts[i],
+        reddit:      redditCounts[i],
+        investment:  investRaw[i],
+        launches:    launchCounts[i],
+        contracts:   contractValues[i],
       },
     };
-    debugLog('DATA', `${c.name}: media=${mediaNorm[i]}, hiring=${hiringNorm[i]}, buzz=${buzzNorm[i]}, interest=${investNorm[i]}, ops=${opsNorm[i]}`);
+    debugLog('DATA', `${c.name}: media=${mediaScore[i]}, hiring=${hiringScore[i]}, buzz=${buzzScore[i]}, interest=${investScore[i]}, ops=${opsScore[i]}`);
   });
 
   // Persist to localStorage
@@ -501,6 +524,84 @@ async function fetchSmartRecruitersCount(companyId) {
     debugLog('ERROR', `SmartRecruiters fetch failed for ${companyId}: ${e.message}`);
     return 0;
   }
+}
+
+async function fetchRedditCount(query) {
+  try {
+    let total = 0;
+    let after = null;
+    const maxPages = 2; // up to 200 posts per company
+    for (let page = 0; page < maxPages; page++) {
+      const url = new URL('https://www.reddit.com/search.json');
+      url.searchParams.set('q', `"${query}"`);
+      url.searchParams.set('sort', 'new');
+      url.searchParams.set('limit', '100');
+      url.searchParams.set('t', 'month');
+      if (after) url.searchParams.set('after', after);
+      const res = await fetch(url.toString(), { headers: { 'User-Agent': 'SpaceTerminal/1.0' } });
+      if (!res.ok) break;
+      const json = await res.json();
+      const children = json?.data?.children ?? [];
+      total += children.length;
+      after = json?.data?.after;
+      if (!after || children.length < 100) break;
+    }
+    debugLog('API', `Reddit "${query}": ${total} posts`);
+    return total;
+  } catch (e) {
+    debugLog('ERROR', `Reddit fetch failed for "${query}": ${e.message}`);
+    return 0;
+  }
+}
+
+async function fetchUSASpendingValue(recipientQuery) {
+  if (!recipientQuery) return 0;
+  try {
+    const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const res = await fetch('https://api.usaspending.gov/api/v2/search/spending_by_award/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filters: {
+          recipient_search_text: [recipientQuery],
+          time_period: [{ start_date: since, end_date: today }],
+          award_type_codes: ['A', 'B', 'C', 'D'],
+        },
+        fields: ['Award Amount'],
+        page: 1,
+        limit: 100,
+        sort: 'Award Amount',
+        order: 'desc',
+      }),
+    });
+    if (!res.ok) {
+      debugLog('ERROR', `USASpending ${res.status} for "${recipientQuery}"`);
+      return 0;
+    }
+    const json = await res.json();
+    const total = (json.results ?? []).reduce((sum, r) => sum + (r['Award Amount'] ?? 0), 0);
+    debugLog('API', `USASpending "${recipientQuery}": $${(total / 1e6).toFixed(1)}M`);
+    return total;
+  } catch (e) {
+    debugLog('ERROR', `USASpending fetch failed for "${recipientQuery}": ${e.message}`);
+    return 0;
+  }
+}
+
+// Proportional (largest-remainder) market share: each company gets a share
+// such that all shares are integers and sum to exactly 100.
+function marketShare(vals) {
+  const total = vals.reduce((a, b) => a + b, 0);
+  if (total === 0) return vals.map(() => 0);
+  const raw = vals.map(v => (v / total) * 100);
+  const floors = raw.map(Math.floor);
+  const remaining = 100 - floors.reduce((a, b) => a + b, 0);
+  raw.map((v, i) => ({ frac: v - Math.floor(v), i }))
+    .sort((a, b) => b.frac - a.frac)
+    .slice(0, remaining)
+    .forEach(({ i }) => floors[i]++);
+  return floors;
 }
 
 async function fetchHNCount(query, sinceTimestamp) {
