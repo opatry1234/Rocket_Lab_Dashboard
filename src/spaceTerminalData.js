@@ -481,8 +481,8 @@ export function velocityColor(label) {
   }
 }
 
-// Continuous red→yellow→green gradient mapped to 0–100.
-// Returns a hex string so callers can append alpha bytes (e.g. `${color}1A`).
+// Returns a hex color string from HSL components.
+// Callers can append alpha bytes (e.g. `${color}1A`).
 function hslToHex(h, s, l) {
   s /= 100;
   l /= 100;
@@ -495,10 +495,19 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+// Continuous red→yellow→green gradient for overall / leaderboard scores (0–100 scale).
 export function scoreColor(score) {
   const clamped = Math.max(0, Math.min(100, score));
-  // hue: 0° = red, 120° = green; 0→100 maps linearly across that arc
   return hslToHex(clamped * 1.2, 80, 52);
+}
+
+// Fixed 6-stop palette for rank-based cell coloring within a domain column.
+// rank 1 = best (green), rank 6 = worst (red).
+const RANK_HUES = [120, 90, 60, 30, 12, 0];
+
+export function rankColor(rank) {
+  const idx = Math.min(Math.max(rank - 1, 0), RANK_HUES.length - 1);
+  return hslToHex(RANK_HUES[idx], 80, 52);
 }
 
 export function getCompany(id) {

@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   COMPANIES, DOMAINS, NARRATIVES,
-  overallScore, rankCompanies, scoreColor, velocityColor, velocityLabel,
+  overallScore, rankColor, rankCompanies, scoreColor, velocityColor, velocityLabel,
 } from './spaceTerminalData';
 import {
   fetchSpaceTerminalSignals,
@@ -20,6 +20,22 @@ import DebugPanel from './DebugPanel';
 
 function HeatMap({ snapshot, prevSnapshot, activeDomain, setActiveDomain }) {
   const ranked = rankCompanies(snapshot);
+
+  // Rank each company within each domain column independently (1 = highest score).
+  // Ties share the same rank.
+  const columnRanks = {};
+  DOMAINS.forEach(d => {
+    const sorted = [...ranked].sort((a, b) => (b.scores[d.id] ?? 0) - (a.scores[d.id] ?? 0));
+    const rankMap = {};
+    sorted.forEach((c, i) => {
+      if (i > 0 && (c.scores[d.id] ?? 0) === (sorted[i - 1].scores[d.id] ?? 0)) {
+        rankMap[c.id] = rankMap[sorted[i - 1].id];
+      } else {
+        rankMap[c.id] = i + 1;
+      }
+    });
+    columnRanks[d.id] = rankMap;
+  });
 
   return (
     <div className="os-heat-wrap">
@@ -53,7 +69,8 @@ function HeatMap({ snapshot, prevSnapshot, activeDomain, setActiveDomain }) {
             {DOMAINS.map(d => {
               const score    = company.scores[d.id] ?? 0;
               const prev     = prevSnapshot?.[company.id]?.[d.id] ?? score;
-              const color    = scoreColor(score);
+              const rank     = columnRanks[d.id]?.[company.id] ?? ranked.length;
+              const color    = rankColor(rank);
               const isActive = activeDomain === d.id;
               return (
                 <div
