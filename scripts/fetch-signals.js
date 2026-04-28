@@ -10,7 +10,9 @@
 //   Interest  — Wikipedia pageviews (last full month), market-shared
 //   Ops       — composite: 50% contracts (USASpending $), 30% launches, 20% hiring rate
 //
-// Run on a schedule (e.g. cron) to keep data fresh without hitting client rate limits.
+// Retry logic: after initial fetch, any unexpected zero triggers up to 2 retries
+// (3 total attempts) with a 10-minute wait between each. Known acceptable zeroes:
+// Blue Origin and Firefly hiring (enterprise ATS behind auth).
 
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
@@ -18,6 +20,10 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// ─── Env loading ──────────────────────────────────────────────────────────────
+// Reads .env.local / .env if present; process.env values (GitHub Actions secrets)
+// take priority since we only set keys that aren't already defined.
 
 function loadEnv() {
   const paths = [join(__dirname, '../.env.local'), join(__dirname, '../.env')]
@@ -49,6 +55,14 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const RETRY_WAIT_MS = 10 * 60 * 1000  // 10 minutes between retry attempts
+const MAX_RETRIES   = 2               // up to 3 total attempts (1 initial + 2 retries)
+
+// Companies whose hiring score is allowed to be zero (enterprise ATS behind auth).
+const HIRING_ZERO_OK = new Set(['blue-origin', 'firefly'])
 
 // ─── Company definitions ──────────────────────────────────────────────────────
 
@@ -124,6 +138,10 @@ function marketShare(vals) {
     .forEach(({ i }) => floors[i]++)
   return floors
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 // ─── Signal source helpers ────────────────────────────────────────────────────
 
@@ -271,76 +289,140 @@ async function main() {
   const since30d  = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000)
   const sinceDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
+  // Pre-allocate mutable arrays so retry logic can update individual indices
+  const mediaRaw      = new Array(COMPANIES.length).fill(0)
+  const jobCounts     = new Array(COMPANIES.length).fill(0)
+  const hiringRaw     = new Array(COMPANIES.length).fill(0)
+  const hnCounts      = new Array(COMPANIES.length).fill(0)
+  const redditCounts  = new Array(COMPANIES.length).fill(0)
+  const buzzRaw       = new Array(COMPANIES.length).fill(0)
+  const investRaw     = new Array(COMPANIES.length).fill(0)
+  const contractValues= new Array(COMPANIES.length).fill(0)
+  const launchCounts  = new Array(COMPANIES.length).fill(0)
+
   // ── 1. Media ────────────────────────────────────────────────────────────────
   console.log('1/5  Media (Spaceflight News API)…')
-  const mediaRaw = []
-  for (const c of COMPANIES) {
-    const v = await fetchSpaceNewsCount(c.name, sinceDate)
-    mediaRaw.push(v)
-    console.log(`     ${c.name}: ${v} articles`)
+  for (let i = 0; i < COMPANIES.length; i++) {
+    mediaRaw[i] = await fetchSpaceNewsCount(COMPANIES[i].name, sinceDate)
+    console.log(`     ${COMPANIES[i].name}: ${mediaRaw[i]} articles`)
   }
 
   // ── 2. Hiring ───────────────────────────────────────────────────────────────
   console.log('\n2/5  Hiring (job boards → growth rate = open_jobs / headcount)…')
-  const jobCounts = []
-  for (const c of COMPANIES) {
-    let v = 0
-    if (c.greenhouse)      v = await fetchGreenhouseCount(c.greenhouse)
-    else if (c.lever)      v = await fetchLeverCount(c.lever)
-    else if (c.smartrecruiters) v = await fetchSmartRecruitersCount(c.smartrecruiters)
-    jobCounts.push(v)
-    const rate = c.headcount > 0 ? (v / c.headcount).toFixed(4) : '0'
-    console.log(`     ${c.name}: ${v} jobs / ${c.headcount} headcount = ${rate}`)
+  for (let i = 0; i < COMPANIES.length; i++) {
+    const c = COMPANIES[i]
+    if (c.greenhouse)           jobCounts[i] = await fetchGreenhouseCount(c.greenhouse)
+    else if (c.lever)           jobCounts[i] = await fetchLeverCount(c.lever)
+    else if (c.smartrecruiters) jobCounts[i] = await fetchSmartRecruitersCount(c.smartrecruiters)
+    hiringRaw[i] = c.headcount > 0 ? jobCounts[i] / c.headcount : 0
+    const rate = hiringRaw[i].toFixed(4)
+    console.log(`     ${c.name}: ${jobCounts[i]} jobs / ${c.headcount} headcount = ${rate}`)
   }
-  // Growth rate: open positions as a fraction of existing headcount
-  const hiringRaw = COMPANIES.map((c, i) =>
-    c.headcount > 0 ? jobCounts[i] / c.headcount : 0
-  )
 
   // ── 3. Buzz ─────────────────────────────────────────────────────────────────
   console.log('\n3/5  Buzz (HN Algolia + Reddit)…')
-  const hnCounts = []
-  const redditCounts = []
-  for (const c of COMPANIES) {
-    const hn = await fetchHNCount(c.hnQuery, since30d)
-    const reddit = await fetchRedditCount(c.redditQuery)
-    hnCounts.push(hn)
-    redditCounts.push(reddit)
-    console.log(`     ${c.name}: HN=${hn} Reddit=${reddit} total=${hn + reddit}`)
+  for (let i = 0; i < COMPANIES.length; i++) {
+    const c = COMPANIES[i]
+    hnCounts[i]     = await fetchHNCount(c.hnQuery, since30d)
+    redditCounts[i] = await fetchRedditCount(c.redditQuery)
+    buzzRaw[i]      = hnCounts[i] + redditCounts[i]
+    console.log(`     ${c.name}: HN=${hnCounts[i]} Reddit=${redditCounts[i]} total=${buzzRaw[i]}`)
   }
-  const buzzRaw = COMPANIES.map((_, i) => hnCounts[i] + redditCounts[i])
 
   // ── 4. Interest ─────────────────────────────────────────────────────────────
   console.log('\n4/5  Interest (Wikipedia pageviews, last full month)…')
-  const investRaw = []
-  for (const c of COMPANIES) {
-    const v = await fetchWikiViews(c.wikiTitle)
-    investRaw.push(v)
-    console.log(`     ${c.name}: ${v.toLocaleString()} views`)
+  for (let i = 0; i < COMPANIES.length; i++) {
+    investRaw[i] = await fetchWikiViews(COMPANIES[i].wikiTitle)
+    console.log(`     ${COMPANIES[i].name}: ${investRaw[i].toLocaleString()} views`)
   }
 
   // ── 5. Ops sub-signals ──────────────────────────────────────────────────────
   console.log('\n5/5  Ops (contracts + launches + hiring rate)…')
 
-  // a) USASpending government contracts
-  const contractValues = []
-  for (const c of COMPANIES) {
-    const v = await fetchUSASpendingValue(c.usaSpendingQuery)
-    contractValues.push(v)
-    console.log(`     ${c.name} contracts: $${(v / 1e6).toFixed(1)}M`)
+  for (let i = 0; i < COMPANIES.length; i++) {
+    contractValues[i] = await fetchUSASpendingValue(COMPANIES[i].usaSpendingQuery)
+    console.log(`     ${COMPANIES[i].name} contracts: $${(contractValues[i] / 1e6).toFixed(1)}M`)
+  }
+  for (let i = 0; i < COMPANIES.length; i++) {
+    launchCounts[i] = await fetchRecentLaunchCountFromSupabase(COMPANIES[i].ll2Rockets)
+    console.log(`     ${COMPANIES[i].name} launches: ${launchCounts[i]}`)
   }
 
-  // b) Recent launches from Supabase cache
-  const launchCounts = []
-  for (const c of COMPANIES) {
-    const v = await fetchRecentLaunchCountFromSupabase(c.ll2Rockets)
-    launchCounts.push(v)
-    console.log(`     ${c.name} launches: ${v}`)
+  // ── Hole detection ──────────────────────────────────────────────────────────
+
+  function findHoles() {
+    const holes = []
+    COMPANIES.forEach((c, i) => {
+      if (mediaRaw[i] === 0)
+        holes.push({ company: c.name, domain: 'media', idx: i })
+      if (!HIRING_ZERO_OK.has(c.id) && hiringRaw[i] === 0)
+        holes.push({ company: c.name, domain: 'hiring', idx: i })
+      if (buzzRaw[i] === 0)
+        holes.push({ company: c.name, domain: 'buzz', idx: i })
+      if (investRaw[i] === 0)
+        holes.push({ company: c.name, domain: 'interest', idx: i })
+      if (contractValues[i] === 0)
+        holes.push({ company: c.name, domain: 'ops', idx: i })
+    })
+    return holes
+  }
+
+  async function refetchHole({ domain, idx }) {
+    const c = COMPANIES[idx]
+    switch (domain) {
+      case 'media':
+        mediaRaw[idx] = await fetchSpaceNewsCount(c.name, sinceDate)
+        console.log(`  [retry] ${c.name} media: ${mediaRaw[idx]} articles`)
+        break
+      case 'hiring': {
+        let v = 0
+        if (c.greenhouse)           v = await fetchGreenhouseCount(c.greenhouse)
+        else if (c.lever)           v = await fetchLeverCount(c.lever)
+        else if (c.smartrecruiters) v = await fetchSmartRecruitersCount(c.smartrecruiters)
+        jobCounts[idx]  = v
+        hiringRaw[idx]  = c.headcount > 0 ? v / c.headcount : 0
+        console.log(`  [retry] ${c.name} hiring: ${v} jobs (rate ${hiringRaw[idx].toFixed(4)})`)
+        break
+      }
+      case 'buzz':
+        hnCounts[idx]     = await fetchHNCount(c.hnQuery, since30d)
+        redditCounts[idx] = await fetchRedditCount(c.redditQuery)
+        buzzRaw[idx]      = hnCounts[idx] + redditCounts[idx]
+        console.log(`  [retry] ${c.name} buzz: HN=${hnCounts[idx]} Reddit=${redditCounts[idx]} total=${buzzRaw[idx]}`)
+        break
+      case 'interest':
+        investRaw[idx] = await fetchWikiViews(c.wikiTitle)
+        console.log(`  [retry] ${c.name} interest: ${investRaw[idx].toLocaleString()} views`)
+        break
+      case 'ops':
+        contractValues[idx] = await fetchUSASpendingValue(c.usaSpendingQuery)
+        console.log(`  [retry] ${c.name} contracts: $${(contractValues[idx] / 1e6).toFixed(1)}M`)
+        break
+    }
+  }
+
+  // ── Retry loop ──────────────────────────────────────────────────────────────
+  // Check for unexpected zeroes after initial fetch; retry up to MAX_RETRIES times.
+
+  let holes = findHoles()
+  for (let retry = 1; retry <= MAX_RETRIES && holes.length > 0; retry++) {
+    console.warn(`\n⚠  ${holes.length} unexpected zero(es) found — waiting 10 min then retrying (${retry}/${MAX_RETRIES})…`)
+    holes.forEach(h => console.warn(`     ${h.company} / ${h.domain}`))
+    await sleep(RETRY_WAIT_MS)
+    console.log(`\nRetry ${retry}/${MAX_RETRIES} — re-fetching failed domains…`)
+    for (const hole of holes) await refetchHole(hole)
+    holes = findHoles()
+  }
+
+  if (holes.length > 0) {
+    console.warn(`\n⚠  Writing snapshot with ${holes.length} remaining hole(s) after all retries:`)
+    holes.forEach(h => console.warn(`     ${h.company} / ${h.domain}`))
+  } else {
+    console.log('\n✓ All expected signals present')
   }
 
   // ── Compute scores ───────────────────────────────────────────────────────────
 
-  // Ops composite: market-share each sub-signal, then weight
   const contractMs     = marketShare(contractValues)
   const launchMs       = marketShare(launchCounts)
   const hiringForOpsMs = marketShare(hiringRaw)
@@ -348,7 +430,6 @@ async function main() {
     0.5 * contractMs[i] + 0.3 * launchMs[i] + 0.2 * hiringForOpsMs[i]
   )
 
-  // Final market-share normalization: each column sums to 100
   const mediaScore  = marketShare(mediaRaw)
   const hiringScore = marketShare(hiringRaw)
   const buzzScore   = marketShare(buzzRaw)
