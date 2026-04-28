@@ -64,6 +64,10 @@ const MAX_RETRIES   = 2               // up to 3 total attempts (1 initial + 2 r
 // Companies whose hiring score is allowed to be zero (enterprise ATS behind auth).
 const HIRING_ZERO_OK = new Set(['blue-origin', 'firefly'])
 
+// Companies whose buzz score is allowed to be zero (low social media presence —
+// genuine zero, not an API failure worth retrying).
+const BUZZ_ZERO_OK = new Set(['firefly', 'vast', 'relativity'])
+
 // ─── Company definitions ──────────────────────────────────────────────────────
 
 const COMPANIES = [
@@ -357,7 +361,7 @@ async function main() {
         holes.push({ company: c.name, domain: 'media', idx: i })
       if (!HIRING_ZERO_OK.has(c.id) && hiringRaw[i] === 0)
         holes.push({ company: c.name, domain: 'hiring', idx: i })
-      if (buzzRaw[i] === 0)
+      if (buzzRaw[i] === 0 && !BUZZ_ZERO_OK.has(c.id))
         holes.push({ company: c.name, domain: 'buzz', idx: i })
       if (investRaw[i] === 0)
         holes.push({ company: c.name, domain: 'interest', idx: i })
