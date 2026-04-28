@@ -1,0 +1,2 @@
+gh auth login --scopes repo,workflow
+git -C /Users/owenpatry/Documents/Rocket_Lab_Dashboard-main push origin main
