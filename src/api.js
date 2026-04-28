@@ -297,12 +297,17 @@ async function readSignalsFromSupabase(maxAgeMs = ST_SUPABASE_TTL_MS) {
  * Used by the fake-refresh animation: show [1] on initial render, animate to [0].
  * Returns { current, previous } — either may be null.
  */
+// Only snapshots written after the composite-scoring redesign are valid for animation.
+// Snapshots 1-5 (before 2026-04-27) used a different schema and would show SpaceX=100 everywhere.
+const COMPOSITE_CUTOFF = '2026-04-27T00:00:00.000Z';
+
 export async function readTwoSignalSnapshots() {
   if (!supabase) return { current: null, previous: null };
   try {
     const { data, error } = await supabase
       .from('signal_snapshots')
       .select('id, signals, created_at')
+      .gte('created_at', COMPOSITE_CUTOFF)
       .order('created_at', { ascending: false })
       .limit(2);
     if (error || !data?.length) return { current: null, previous: null };

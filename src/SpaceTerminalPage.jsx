@@ -209,7 +209,10 @@ export default function SpaceTerminalPage() {
   const [animMode]     = useState(shouldAnimate);
 
   const [snapshot,      setSnapshot]      = useState(null);          // latest data
-  const [displaySnap,   setDisplaySnap]   = useState(               // what's rendered
+  const [displaySnap,   setDisplaySnap]   = useState(               // what table renders
+    () => animMode ? null : getStaleSignals()
+  );
+  const [kpiSnap,       setKpiSnap]       = useState(               // what KPI tiles render
     () => animMode ? null : getStaleSignals()
   );
   const [prevSnapshot,  setPrevSnapshot]  = useState(null);
@@ -242,29 +245,31 @@ export default function SpaceTerminalPage() {
         if (current && previous) {
           setSnapshot(current);
           setDisplaySnap(previous);
+          setKpiSnap(previous);
           setFetchedAt(Date.now());
           setLoading(false);
           setTimeout(() => setAnimCol(0), 500);
         } else if (current) {
           setSnapshot(current);
           setDisplaySnap(current);
+          setKpiSnap(current);
           setFetchedAt(Date.now());
           setLoading(false);
         } else {
           // No Supabase data — fall through to live fetch
           fetchSpaceTerminalSignals(COMPANIES, onProgress)
-            .then(s => { setSnapshot(s); setDisplaySnap(s); setFetchedAt(Date.now()); })
+            .then(s => { setSnapshot(s); setDisplaySnap(s); setKpiSnap(s); setFetchedAt(Date.now()); })
             .finally(() => { setLoading(false); setStatus(null); });
         }
       }).catch(() => {
         fetchSpaceTerminalSignals(COMPANIES, onProgress)
-          .then(s => { setSnapshot(s); setDisplaySnap(s); setFetchedAt(Date.now()); })
+          .then(s => { setSnapshot(s); setDisplaySnap(s); setKpiSnap(s); setFetchedAt(Date.now()); })
           .finally(() => { setLoading(false); setStatus(null); });
       });
     } else {
       // Normal path: Supabase snapshot → localStorage → live APIs
       fetchSpaceTerminalSignals(COMPANIES, onProgress)
-        .then(s => { setSnapshot(s); setDisplaySnap(s); setFetchedAt(Date.now()); })
+        .then(s => { setSnapshot(s); setDisplaySnap(s); setKpiSnap(s); setFetchedAt(Date.now()); })
         .catch(() => {})
         .finally(() => { setLoading(false); setStatus(null); });
     }
@@ -272,11 +277,17 @@ export default function SpaceTerminalPage() {
   }, []);
 
   // ── Animation ticker ────────────────────────────────────────────────────────
+  // animCol: 0..(DOMAINS.length-1) = scan domain columns in the table
+  //          DOMAINS.length..(DOMAINS.length+COMPANIES.length-1) = scan KPI tiles one by one
+  //          'done' = finished
   useEffect(() => {
     if (animCol === null || animCol === 'done') return;
 
     const timer = setTimeout(() => {
-      if (typeof animCol === 'number' && animCol < DOMAINS.length) {
+      if (typeof animCol !== 'number') return;
+
+      if (animCol < DOMAINS.length) {
+        // Domain column phase — update the table's displaySnap for this column only
         const domainId = DOMAINS[animCol].id;
         setDisplaySnap(prev => {
           if (!prev || !snapshot) return prev;
@@ -286,11 +297,24 @@ export default function SpaceTerminalPage() {
           }
           return next;
         });
-        setAnimCol(animCol + 1 < DOMAINS.length ? animCol + 1 : 'kpi');
-      } else if (animCol === 'kpi') {
-        setDisplaySnap(snapshot);
-        setAnimCol('done');
-        try { localStorage.setItem('st_last_refresh_seen', String(Date.now())); } catch {}
+        setAnimCol(animCol + 1); // naturally steps into KPI phase when animCol reaches DOMAINS.length
+      } else {
+        // KPI tile phase — update one tile at a time; kpiSnap starts frozen at prev values
+        const tileIdx = animCol - DOMAINS.length;
+        const company = COMPANIES[tileIdx];
+        if (company && snapshot) {
+          setKpiSnap(prev => ({
+            ...(prev ?? {}),
+            [company.id]: snapshot[company.id],
+          }));
+        }
+        const next = animCol + 1;
+        if (next >= DOMAINS.length + COMPANIES.length) {
+          setAnimCol('done');
+          try { localStorage.setItem('st_last_refresh_seen', String(Date.now())); } catch {}
+        } else {
+          setAnimCol(next);
+        }
       }
     }, 1000);
 
@@ -315,6 +339,7 @@ export default function SpaceTerminalPage() {
       .then(signals => {
         setSnapshot(signals);
         setDisplaySnap(signals);
+        setKpiSnap(signals);
         setFetchedAt(Date.now());
       })
       .catch(() => {})
@@ -331,7 +356,10 @@ export default function SpaceTerminalPage() {
   const scanDomain = typeof animCol === 'number' && animCol < DOMAINS.length
     ? DOMAINS[animCol].id
     : null;
-  const kpiScanning = animCol === 'kpi';
+  // Which KPI tile index is currently scanning (null if not in KPI phase)
+  const kpiScanIdx = typeof animCol === 'number' && animCol >= DOMAINS.length
+    ? animCol - DOMAINS.length
+    : null;
 
   if (loading && !displaySnap) {
     return (
@@ -413,16 +441,17 @@ export default function SpaceTerminalPage() {
           </div>
         </div>
 
-        {/* KPI row — company cards */}
+        {/* KPI row — company cards; frozen during column animation, then scan tile by tile */}
         <section className="kpi-row comp-kpi-row">
-          {COMPANIES.map(c => {
-            const scores  = currentSnap[c.id] ?? {};
+          {COMPANIES.map((c, i) => {
+            const scores  = (kpiSnap ?? {})[c.id] ?? {};
             const overall = overallScore(scores);
+            const isScanning = kpiScanIdx === i;
             return (
               <Link
                 key={c.id}
                 to={`/company/${c.id}`}
-                className={`kpi-card comp-kpi-card kpi-card-link${kpiScanning ? ' kpi-scanning' : ''}`}
+                className={`kpi-card comp-kpi-card kpi-card-link${isScanning ? ' kpi-scanning' : ''}`}
                 style={{ borderTopColor: c.color }}
               >
                 <div className="comp-kpi-rocket" style={{ color: c.color }}>{c.name}</div>
