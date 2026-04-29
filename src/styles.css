@@ -876,6 +876,21 @@ body a {
   gap: 14px;
 }
 
+.os-heat-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* smooth momentum scroll on iOS */
+  padding-bottom: 4px; /* room for scrollbar on desktop */
+}
+
+/* On narrow screens where the table actually overflows, add a right-edge fade
+   so users get a visual hint that the table continues beyond the boundary */
+@media (max-width: 640px) {
+  .os-heat-scroll {
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+  }
+}
+
 .os-heat-grid {
   display: grid;
   grid-template-columns: 160px repeat(5, 1fr);

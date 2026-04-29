@@ -42,6 +42,7 @@ function HeatMap({ snapshot, prevSnapshot, activeDomain, setActiveDomain, scanDo
 
   return (
     <div className="os-heat-wrap">
+      <div className="os-heat-scroll">
       <div className="os-heat-grid">
         {/* Corner */}
         <div className="os-heat-corner" />
@@ -120,6 +121,8 @@ function HeatMap({ snapshot, prevSnapshot, activeDomain, setActiveDomain, scanDo
           );
         })}
       </div>
+
+      </div>{/* /os-heat-scroll */}
 
       {/* Domain legend */}
       <div className="os-heat-legend">
