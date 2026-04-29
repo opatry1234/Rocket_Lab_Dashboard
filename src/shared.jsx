@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RateLimitError } from './api';
 import { isFlown, statusOf } from './processors';
@@ -190,6 +190,57 @@ export function ErrorPage({ err }) {
       >
         Retry
       </button>
+    </div>
+  );
+}
+
+// ─── Vehicle hero image ────────────────────────────────────────────────────────
+
+function useWikiHeroImage(wikiTitle) {
+  const [url, setUrl] = useState(null);
+  const [loading, setLoading] = useState(!!wikiTitle);
+
+  useEffect(() => {
+    if (!wikiTitle) { setLoading(false); return; }
+    let cancelled = false;
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!cancelled) {
+          setUrl(data?.thumbnail?.source ?? null);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [wikiTitle]);
+
+  return { url, loading };
+}
+
+export function VehicleHeroImage({ wikiTitle }) {
+  const { url, loading } = useWikiHeroImage(wikiTitle);
+
+  // Nothing to show — no wikiTitle or fetch returned no thumbnail
+  if (!loading && !url) return null;
+
+  return (
+    <div className="vehicle-hero" aria-hidden="true">
+      {loading && <div className="vehicle-hero-skeleton" />}
+      {url && (
+        <>
+          <img
+            src={url}
+            alt=""
+            className="vehicle-hero-img"
+            onError={e => { e.currentTarget.style.display = 'none'; }}
+          />
+          <div className="vehicle-hero-grad" />
+          <span className="vehicle-hero-credit">Photo: Wikipedia / CC</span>
+        </>
+      )}
     </div>
   );
 }
