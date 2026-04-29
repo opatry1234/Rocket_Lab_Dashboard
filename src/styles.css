@@ -326,13 +326,15 @@ body a {
 
 .vehicle-hero {
   position: relative;
-  width: 100%;
   background: #0A0E1A;
 }
 
 .vehicle-hero-img {
   display: block;
+  margin: 0 auto;
   width: 100%;
+  max-width: 660px;  /* ≈ 2 KPI tiles wide at max layout */
+  max-height: 600px; /* ≈ 4 KPI tiles tall */
   height: auto;
 }
 
