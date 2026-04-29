@@ -298,8 +298,10 @@ async function fetchRecentLaunchCountFromSupabase(rocketNames) {
 // stored row, the file is already current and we skip the download entirely.
 
 const VEHICLE_WIKI_IMAGES = [
-  { slug: 'falcon-9',     wikiTitle: 'Falcon_9' },
-  { slug: 'falcon-heavy', wikiTitle: 'Falcon_Heavy' },
+  // Use pages whose Wikipedia thumbnail is an actual vehicle photo, not a logo.
+  // Falcon 9 / Heavy article thumbnails are SVG wordmarks — use a mission page instead.
+  { slug: 'falcon-9',     wikiTitle: 'Falcon_9_v1.2' },
+  { slug: 'falcon-heavy', wikiTitle: 'Falcon_Heavy_test_flight' },
   { slug: 'starship',     wikiTitle: 'SpaceX_Starship' },
   { slug: 'electron',     wikiTitle: 'Electron_(rocket)' },
   { slug: 'neutron',      wikiTitle: 'Neutron_(rocket)' },
@@ -318,7 +320,10 @@ async function syncVehicleImages() {
     .select('slug, wiki_url')
   const stored = Object.fromEntries((existing ?? []).map(r => [r.slug, r.wiki_url]))
 
-  for (const { slug, wikiTitle } of VEHICLE_WIKI_IMAGES) {
+  for (let vi = 0; vi < VEHICLE_WIKI_IMAGES.length; vi++) {
+    const { slug, wikiTitle } = VEHICLE_WIKI_IMAGES[vi]
+    // Courtesy delay between Wikipedia requests to avoid rate-limiting (429s)
+    if (vi > 0) await sleep(1200)
     try {
       // 1. Get Wikipedia thumbnail URL
       const summaryRes = await fetch(
