@@ -13,7 +13,6 @@ import {
   getStaleSignals, signalAgeMs, ST_MIN_REFRESH_MS,
 } from './api';
 import { C, tt, tickStyle, PageFooter } from './shared';
-import DebugPanel from './DebugPanel';
 
 // ─── Heat Map ──────────────────────────────────────────────────────────────────
 
@@ -512,7 +511,6 @@ export default function SpaceTerminalPage() {
           <a href="https://ll.thespacedevs.com" target="_blank" rel="noopener noreferrer">Launch Library 2</a>.
         </>
       } />
-      <DebugPanel />
     </div>
   );
 }
