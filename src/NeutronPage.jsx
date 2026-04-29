@@ -110,7 +110,7 @@ export default function NeutronPage() {
         </div>
       </header>
 
-      <VehicleHeroImage wikiTitle="Neutron_(rocket)" />
+      <VehicleHeroImage slug="neutron" />
 
       <div className="neutron-bar-wrap">
         <div className="neutron-bar-inner">

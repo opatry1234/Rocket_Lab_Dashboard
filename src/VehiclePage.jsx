@@ -84,7 +84,7 @@ function InProductionVehicle({ company, vehicle }) {
         </div>
       </header>
 
-      <VehicleHeroImage wikiTitle={vehicle.wikiTitle} />
+      <VehicleHeroImage slug={vehicle.slug} />
 
       {/* Neutron-style top progress bar */}
       <div className="neutron-bar-wrap">
@@ -184,7 +184,7 @@ function UsableVehicle({ company, vehicle }) {
         </div>
       </header>
 
-      <VehicleHeroImage wikiTitle={vehicle.wikiTitle} />
+      <VehicleHeroImage slug={vehicle.slug} />
 
       <main className="main">
         {/* KPI row */}

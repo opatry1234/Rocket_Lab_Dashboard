@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RateLimitError } from './api';
 import { isFlown, statusOf } from './processors';
@@ -195,52 +195,33 @@ export function ErrorPage({ err }) {
 }
 
 // ─── Vehicle hero image ────────────────────────────────────────────────────────
+// Serves images from Supabase Storage (vehicle-images bucket).
+// The cron job (fetch-signals.js) keeps images fresh; no client-side API call needed.
 
-function useWikiHeroImage(wikiTitle) {
-  const [url, setUrl] = useState(null);
-  const [loading, setLoading] = useState(!!wikiTitle);
+export function VehicleHeroImage({ slug }) {
+  const [visible, setVisible] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    if (!wikiTitle) { setLoading(false); return; }
-    let cancelled = false;
-    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`)
-      .then(r => r.json())
-      .then(data => {
-        if (!cancelled) {
-          setUrl(data?.thumbnail?.source ?? null);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [wikiTitle]);
+  if (!slug || !visible) return null;
 
-  return { url, loading };
-}
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!supabaseUrl) return null;
 
-export function VehicleHeroImage({ wikiTitle }) {
-  const { url, loading } = useWikiHeroImage(wikiTitle);
-
-  // Nothing to show — no wikiTitle or fetch returned no thumbnail
-  if (!loading && !url) return null;
+  const src = `${supabaseUrl}/storage/v1/object/public/vehicle-images/${slug}.jpg`;
 
   return (
     <div className="vehicle-hero" aria-hidden="true">
-      {loading && <div className="vehicle-hero-skeleton" />}
-      {url && (
-        <>
-          <img
-            src={url}
-            alt=""
-            className="vehicle-hero-img"
-            onError={e => { e.currentTarget.style.display = 'none'; }}
-          />
-          <div className="vehicle-hero-grad" />
-          <span className="vehicle-hero-credit">Photo: Wikipedia / CC</span>
-        </>
-      )}
+      {!loaded && <div className="vehicle-hero-skeleton" />}
+      <img
+        src={src}
+        alt=""
+        className="vehicle-hero-img"
+        style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.5s ease' }}
+        onLoad={() => setLoaded(true)}
+        onError={() => setVisible(false)}
+      />
+      {loaded && <div className="vehicle-hero-grad" />}
+      {loaded && <span className="vehicle-hero-credit">Photo: Wikipedia / CC</span>}
     </div>
   );
 }
