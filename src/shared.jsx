@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { RateLimitError } from './api';
 import { isFlown, statusOf } from './processors';
@@ -190,38 +190,6 @@ export function ErrorPage({ err }) {
       >
         Retry
       </button>
-    </div>
-  );
-}
-
-// ─── Vehicle hero image ────────────────────────────────────────────────────────
-// Serves images from Supabase Storage (vehicle-images bucket).
-// The cron job (fetch-signals.js) keeps images fresh; no client-side API call needed.
-
-export function VehicleHeroImage({ slug }) {
-  const [visible, setVisible] = useState(true);
-  const [loaded, setLoaded] = useState(false);
-
-  if (!slug || !visible) return null;
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (!supabaseUrl) return null;
-
-  const src = `${supabaseUrl}/storage/v1/object/public/vehicle-images/${slug}.jpg`;
-
-  return (
-    <div className="vehicle-hero" aria-hidden="true">
-      {!loaded && <div className="vehicle-hero-skeleton" />}
-      <img
-        src={src}
-        alt=""
-        className="vehicle-hero-img"
-        style={{ opacity: loaded ? 1 : 0, transition: 'opacity 0.5s ease' }}
-        onLoad={() => setLoaded(true)}
-        onError={() => setVisible(false)}
-      />
-      {loaded && <div className="vehicle-hero-grad" />}
-      {loaded && <span className="vehicle-hero-credit">Photo: Wikipedia / CC</span>}
     </div>
   );
 }

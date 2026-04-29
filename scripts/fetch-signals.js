@@ -48,7 +48,6 @@ loadEnv()
 
 const SUPABASE_URL      = process.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY  // optional — used for Storage writes
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY')
@@ -56,12 +55,6 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-// Admin client uses service role key when available (bypasses RLS for Storage writes).
-// Falls back to anon key — requires permissive bucket policies if service key is absent.
-const supabaseAdmin = SUPABASE_SERVICE_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-  : supabase
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -291,102 +284,6 @@ async function fetchRecentLaunchCountFromSupabase(rocketNames) {
   return total
 }
 
-// ─── Vehicle image sync ───────────────────────────────────────────────────────
-// Fetches thumbnail URLs from Wikipedia, downloads any that have changed,
-// and upserts them into Supabase Storage (vehicle-images bucket).
-// Change detection uses the vehicle_images table: if wiki_url matches the
-// stored row, the file is already current and we skip the download entirely.
-
-const VEHICLE_WIKI_IMAGES = [
-  // Use pages whose Wikipedia thumbnail is an actual vehicle photo, not a logo.
-  // Falcon 9 / Heavy article thumbnails are SVG wordmarks — use a mission page instead.
-  { slug: 'falcon-9',     wikiTitle: 'Falcon_9_v1.2' },
-  { slug: 'falcon-heavy', wikiTitle: 'Falcon_Heavy_test_flight' },
-  { slug: 'starship',     wikiTitle: 'SpaceX_Starship' },
-  { slug: 'electron',     wikiTitle: 'Electron_(rocket)' },
-  { slug: 'neutron',      wikiTitle: 'Neutron_(rocket)' },
-  { slug: 'new-shepard',  wikiTitle: 'New_Shepard' },
-  { slug: 'new-glenn',    wikiTitle: 'New_Glenn' },
-  { slug: 'alpha',        wikiTitle: 'Firefly_Alpha' },
-  { slug: 'terran-r',     wikiTitle: 'Terran_R' },
-]
-
-async function syncVehicleImages() {
-  console.log('\n─── Vehicle image sync ─────────────────────────────────────────────────────')
-
-  // Load all currently stored URLs in one query
-  const { data: existing } = await supabaseAdmin
-    .from('vehicle_images')
-    .select('slug, wiki_url')
-  const stored = Object.fromEntries((existing ?? []).map(r => [r.slug, r.wiki_url]))
-
-  for (let vi = 0; vi < VEHICLE_WIKI_IMAGES.length; vi++) {
-    const { slug, wikiTitle } = VEHICLE_WIKI_IMAGES[vi]
-    // Courtesy delay between Wikipedia requests to avoid rate-limiting (429s)
-    if (vi > 0) await sleep(1200)
-    try {
-      // 1. Get Wikipedia thumbnail URL
-      const summaryRes = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`,
-        { headers: { 'User-Agent': 'SpaceTerminal/1.0' } }
-      )
-      if (!summaryRes.ok) {
-        console.log(`  ${slug}: Wikipedia fetch failed (${summaryRes.status}) — skip`)
-        continue
-      }
-      const summary = await summaryRes.json()
-      const wikiUrl = summary?.thumbnail?.source ?? null
-
-      if (!wikiUrl) {
-        console.log(`  ${slug}: no thumbnail on Wikipedia — skip`)
-        continue
-      }
-
-      // 2. Skip if URL is unchanged
-      if (stored[slug] === wikiUrl) {
-        console.log(`  ${slug}: unchanged — skip`)
-        continue
-      }
-
-      // 3. Download image bytes
-      const imgRes = await fetch(wikiUrl)
-      if (!imgRes.ok) {
-        console.log(`  ${slug}: image download failed (${imgRes.status}) — skip`)
-        continue
-      }
-      const bytes = await imgRes.arrayBuffer()
-      const contentType = imgRes.headers.get('content-type') ?? 'image/jpeg'
-
-      // 4. Upsert to Supabase Storage
-      const { error: uploadError } = await supabaseAdmin.storage
-        .from('vehicle-images')
-        .upload(`${slug}.jpg`, bytes, { contentType, upsert: true })
-
-      if (uploadError) {
-        console.error(`  ${slug}: storage upload failed — ${uploadError.message}`)
-        continue
-      }
-
-      // 5. Record the new URL in vehicle_images table
-      const { error: dbError } = await supabaseAdmin
-        .from('vehicle_images')
-        .upsert({ slug, wiki_url: wikiUrl, stored_at: new Date().toISOString() })
-
-      if (dbError) {
-        console.error(`  ${slug}: table upsert failed — ${dbError.message}`)
-        continue
-      }
-
-      const action = stored[slug] ? 'updated' : 'added'
-      console.log(`  ${slug}: ${action} (${Math.round(bytes.byteLength / 1024)} kB from ${wikiUrl})`)
-    } catch (err) {
-      console.error(`  ${slug}: unexpected error — ${err.message}`)
-    }
-  }
-
-  console.log('Image sync complete.')
-}
-
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -599,10 +496,6 @@ async function main() {
   }
 
   console.log(`✓ Snapshot saved — id=${data.id} at ${data.created_at}`)
-
-  // ── Sync vehicle hero images ─────────────────────────────────────────────────
-  await syncVehicleImages()
-
   console.log('\nDone.')
 }
 

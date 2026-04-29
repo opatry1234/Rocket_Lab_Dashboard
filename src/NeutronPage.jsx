@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Breadcrumbs, C, PageFooter, VehicleHeroImage } from './shared';
+import { Breadcrumbs, C, PageFooter } from './shared';
 
 const COMPLETION_PCT = 42;
 
@@ -109,8 +109,6 @@ export default function NeutronPage() {
           </div>
         </div>
       </header>
-
-      <VehicleHeroImage slug="neutron" />
 
       <div className="neutron-bar-wrap">
         <div className="neutron-bar-inner">
