@@ -256,6 +256,7 @@ body a {
   border-radius: 12px;
   padding: 20px 20px 12px;
   transition: box-shadow 0.15s ease;
+  min-width: 0; /* prevent grid blowout from wide content (e.g. heat map) */
 }
 
 .chart-card:hover {
@@ -901,14 +902,6 @@ body a {
   padding-bottom: 4px; /* room for scrollbar on desktop */
 }
 
-/* On narrow screens where the table actually overflows, add a right-edge fade
-   so users get a visual hint that the table continues beyond the boundary */
-@media (max-width: 640px) {
-  .os-heat-scroll {
-    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
-  }
-}
 
 .os-heat-grid {
   display: grid;
