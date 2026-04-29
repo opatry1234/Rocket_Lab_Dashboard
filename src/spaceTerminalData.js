@@ -238,7 +238,7 @@ export const VEHICLES = {
       type: 'special-neutron',    // routes to existing rich Neutron page
       ll2Name: 'Neutron',
       wikiTitle: 'Neutron_(rocket)',
-      heroImage: '/vehicles/neutron.png',
+      heroImage: '/vehicles/neutron.jpg',
       tagline: 'Medium-lift reusable rocket for mega-constellations',
       specs: { height: '40 m', diameter: '7 m', payload_leo: '13,000 kg', payload_reuse: '8,000 kg', reusable: 'Yes (first stage)' },
     },
@@ -344,7 +344,7 @@ export const VEHICLES = {
       type: 'in-production',
       ll2Name: 'Terran R',
       wikiTitle: 'Terran_R',
-      heroImage: '/vehicles/terran-r.png',
+      heroImage: '/vehicles/terran-r.jpg',
       tagline: 'Fully reusable medium-lift rocket built by additive manufacturing',
       specs: { height: '~66 m', diameter: '5 m', payload_leo: '20,000 kg (expendable)', payload_reuse: '~14,000 kg', reusable: 'Yes (full stack)' },
       milestones: [

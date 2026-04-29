@@ -110,7 +110,7 @@ export default function NeutronPage() {
         </div>
       </header>
 
-      <VehicleHeroImage src="/vehicles/neutron.png" />
+      <VehicleHeroImage src="/vehicles/neutron.jpg" />
 
       <div className="neutron-bar-wrap">
         <div className="neutron-bar-inner">
