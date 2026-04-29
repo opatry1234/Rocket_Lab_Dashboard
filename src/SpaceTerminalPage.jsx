@@ -249,6 +249,7 @@ export default function SpaceTerminalPage() {
           setSnapshot(current);
           setDisplaySnap(previous);
           setKpiSnap(previous);
+          setPrevSnapshot(previous); // baseline for delta arrows during animation
           setFetchedAt(Date.now());
           setLoading(false);
           setTimeout(() => setAnimCol(0), 500);
@@ -363,6 +364,8 @@ export default function SpaceTerminalPage() {
   const kpiScanIdx = typeof animCol === 'number' && animCol >= DOMAINS.length
     ? animCol - DOMAINS.length
     : null;
+  // True while any refresh (fake or real) is still in progress
+  const isRefreshActive = refreshing || (animCol !== null && animCol !== 'done');
 
   if (loading && !displaySnap) {
     return (
@@ -436,7 +439,7 @@ export default function SpaceTerminalPage() {
             <p className="chart-heading">Signal Heat Map — click a domain header to highlight</p>
             <HeatMap
               snapshot={currentSnap}
-              prevSnapshot={animCol !== null && animCol !== 'done' ? null : prevSnapshot}
+              prevSnapshot={isRefreshActive ? prevSnapshot : null}
               activeDomain={activeDomain}
               setActiveDomain={setActiveDomain}
               scanDomain={scanDomain}
@@ -447,9 +450,13 @@ export default function SpaceTerminalPage() {
         {/* KPI row — company cards; frozen during column animation, then scan tile by tile */}
         <section className="kpi-row comp-kpi-row">
           {COMPANIES.map((c, i) => {
-            const scores  = (kpiSnap ?? {})[c.id] ?? {};
-            const overall = overallScore(scores);
-            const isScanning = kpiScanIdx === i;
+            const scores      = (kpiSnap ?? {})[c.id] ?? {};
+            const overall     = overallScore(scores);
+            const prevOverall = isRefreshActive && prevSnapshot
+              ? overallScore(prevSnapshot[c.id] ?? {})
+              : null;
+            const delta       = prevOverall !== null ? overall - prevOverall : 0;
+            const isScanning  = kpiScanIdx === i;
             return (
               <Link
                 key={c.id}
@@ -458,7 +465,14 @@ export default function SpaceTerminalPage() {
                 style={{ borderTopColor: c.color }}
               >
                 <div className="comp-kpi-rocket" style={{ color: c.color }}>{c.name}</div>
-                <div className="kpi-value" style={{ color: c.color }}>{overall || '—'}</div>
+                <div className="kpi-value-row">
+                  <span className="kpi-value" style={{ color: c.color }}>{overall || '—'}</span>
+                  {delta !== 0 && (
+                    <span className="kpi-delta" style={{ color: delta > 0 ? C.green : C.red }}>
+                      {delta > 0 ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
                 <div className="kpi-label">Signal Score</div>
                 <div className="comp-kpi-meta">{c.tagline}</div>
               </Link>
@@ -471,7 +485,7 @@ export default function SpaceTerminalPage() {
             <p className="chart-heading">Industry Leaderboard</p>
             <Leaderboard
               snapshot={currentSnap}
-              prevSnapshot={animCol !== null && animCol !== 'done' ? null : prevSnapshot}
+              prevSnapshot={isRefreshActive ? prevSnapshot : null}
             />
           </div>
         </div>
