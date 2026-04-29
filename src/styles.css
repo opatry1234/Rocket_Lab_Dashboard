@@ -531,35 +531,29 @@ body a {
   position: relative;
   height: 100%;
   overflow: hidden;
-  background: linear-gradient(90deg, #009F78 0%, #00D2A0 30%, #6EF0B9 55%, #00C493 78%, #009F78 100%);
-  background-size: 260% 100%;
+  background: linear-gradient(90deg, #009F78 0%, #00D2A0 35%, #6EF0B9 50%, #00C493 65%, #009F78 100%);
   border-radius: inherit;
   transition: width 1.25s cubic-bezier(0.16, 1, 0.3, 1);
-  animation: neutron-progress-flow 6s linear infinite;
 }
 
+/* Shimmer sweeps left→right via translateX so the reset happens off-screen —
+   no visible jump at loop boundary. */
 .neutron-bar-fill::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent 0%, rgba(126, 232, 162, 0.12) 34%, rgba(126, 232, 162, 0.55) 50%, rgba(126, 232, 162, 0.12) 66%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(126, 232, 162, 0.55) 50%, transparent 100%);
   transform: translateX(-100%);
-  animation: neutron-progress-sheen 3.8s ease-in-out infinite;
+  animation: neutron-bar-shimmer 2.8s ease-in-out infinite;
   pointer-events: none;
 }
 
-@keyframes neutron-progress-flow {
-  from { background-position: 220% 0; }
-  to { background-position: 0 0; }
-}
-
-@keyframes neutron-progress-sheen {
-  0% { transform: translateX(-100%); }
-  55%, 100% { transform: translateX(100%); }
+@keyframes neutron-bar-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .neutron-bar-fill,
   .neutron-bar-fill::after {
     animation: none;
   }
@@ -584,6 +578,13 @@ body a {
   color: #E8EAF0;
   font-size: 1.55rem;
   margin-bottom: 8px;
+}
+
+/* Consistent vertical spacing for all in-development vehicle pages */
+.indev-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
 .neutron-milestone-grid {

@@ -26,29 +26,30 @@ function successRate(launches) {
   return +((flown.filter(l => statusOf(l) === 'Success').length / flown.length) * 100).toFixed(1);
 }
 
-// ─── Milestone timeline ────────────────────────────────────────────────────────
+// ─── In-development helpers ────────────────────────────────────────────────────
 
-function MilestoneBar({ milestone }) {
-  const { title, pct, status, detail, color } = milestone;
-  const barColor = color ?? (
-    pct === 100 ? C.green :
-    pct >= 70   ? C.blue  :
-    pct >= 40   ? C.yellow :
-    C.orange
-  );
-
+function InDevStatusBadge({ status, color }) {
   return (
-    <div className="neutron-milestone">
-      <div className="nm-header">
-        <span className="nm-title">{title}</span>
-        <span className="nm-status" style={{ color: barColor }}>{status}</span>
-      </div>
-      <div className="nm-track">
-        <div className="nm-fill" style={{ width: `${pct}%`, background: barColor }} />
-      </div>
-      <p className="nm-detail">{detail}</p>
+    <span className="status-badge" style={{ borderColor: `${color}55`, color, background: `${color}1A` }}>
+      {status}
+    </span>
+  );
+}
+
+function InDevMiniBar({ pct, color, animated }) {
+  return (
+    <div className="mini-bar">
+      <div className="mini-bar-fill" style={{ width: animated ? `${pct}%` : '0%', background: color }} />
     </div>
   );
+}
+
+function milestoneColor(m) {
+  if (m.color) return m.color;
+  if (m.pct === 100) return C.green;
+  if (m.pct >= 70)   return C.blue;
+  if (m.pct >= 40)   return C.yellow;
+  return C.orange;
 }
 
 // ─── In-production vehicle ─────────────────────────────────────────────────────
@@ -61,7 +62,9 @@ function InProductionVehicle({ company, vehicle }) {
   }, []);
 
   const pct = vehicle.overallPct ?? 0;
-  const col = pct >= 80 ? C.green : pct >= 50 ? C.yellow : C.orange;
+  const timeline = vehicle.timeline ?? [];
+  const stats = vehicle.stats ?? [];
+  const colCount = timeline.length || 1;
 
   return (
     <div className="app">
@@ -86,7 +89,6 @@ function InProductionVehicle({ company, vehicle }) {
 
       <VehicleHeroImage src={vehicle.heroImage} />
 
-      {/* Neutron-style top progress bar */}
       <div className="neutron-bar-wrap">
         <div className="neutron-bar-inner">
           <span className="neutron-bar-label">{vehicle.name}: Development Progress</span>
@@ -98,41 +100,79 @@ function InProductionVehicle({ company, vehicle }) {
       </div>
 
       <main className="main">
-        {/* KPI row */}
-        <section className="kpi-row">
-          <div className="kpi-card" style={{ borderTopColor: col }}>
-            <div className="kpi-value" style={{ color: col }}>{pct}%</div>
-            <div className="kpi-label">Development Progress</div>
-            <div className="kpi-sub">In Development</div>
-          </div>
-          {Object.entries(vehicle.specs ?? {}).slice(0, 4).map(([k, v]) => (
-            <div key={k} className="kpi-card" style={{ borderTopColor: company.color }}>
-              <div className="kpi-value" style={{ color: company.color, fontSize: '1.2rem' }}>{v}</div>
-              <div className="kpi-label">{k.replace(/_/g, ' ')}</div>
+        <div className="indev-main-content">
+
+          {/* Development Milestones */}
+          <section className="detail-section">
+            <p className="chart-heading">Development Milestones</p>
+            <div className="neutron-milestone-grid">
+              {(vehicle.milestones ?? []).map((m, i) => {
+                const col = milestoneColor(m);
+                return (
+                  <article key={i} className="chart-card neutron-milestone-card">
+                    <InDevStatusBadge status={m.status} color={col} />
+                    <h3>{m.title}</h3>
+                    <InDevMiniBar pct={m.pct} color={col} animated={animated} />
+                    <div className="milestone-pct">{m.pct}%</div>
+                    <p>{m.detail}</p>
+                  </article>
+                );
+              })}
             </div>
-          ))}
-        </section>
+          </section>
 
-        {/* Milestone bars */}
-        <div className="chart-card wide">
-          <p className="chart-heading">Development Milestones</p>
-          <div className="neutron-milestones">
-            {(vehicle.milestones ?? []).map((m, i) => (
-              <MilestoneBar key={i} milestone={m} />
-            ))}
-          </div>
-        </div>
+          {/* Program Timeline */}
+          {timeline.length > 0 && (
+            <section className="detail-section">
+              <p className="chart-heading">Program Timeline</p>
+              <div className="chart-card neutron-timeline-card">
+                <div
+                  className="neutron-timeline-wrap"
+                  style={{ gridTemplateColumns: `repeat(${colCount}, 1fr)` }}
+                >
+                  <div className="neutron-timeline-line" />
+                  {timeline.map((item) => (
+                    <div key={item.year} className="neutron-timeline-item">
+                      <div className="neutron-timeline-year" style={{ color: item.current ? C.green : C.orange }}>
+                        {item.year}
+                      </div>
+                      <div
+                        className="neutron-timeline-dot"
+                        style={{
+                          background: item.current ? C.green : C.orange,
+                          boxShadow: item.current ? `0 0 10px ${C.green}88` : 'none',
+                        }}
+                      />
+                      <div className="neutron-timeline-text">{item.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
-        <div className="comp-note">
-          <span className="comp-note-icon">i</span>
-          <p>
-            <strong style={{ color: C.text }}>{vehicle.name}</strong> is currently in development.
-            Milestone percentages reflect publicly available program status information.
-          </p>
+          {/* Key Specifications */}
+          {stats.length > 0 && (
+            <section className="detail-section">
+              <p className="chart-heading">Key Specifications</p>
+              <div className="kpi-row">
+                {stats.map((stat) => (
+                  <div key={stat.label} className="kpi-card" style={{ borderTopColor: company.color }}>
+                    <div className="kpi-value" style={{ color: company.color, fontSize: '1.2rem' }}>
+                      {stat.value}
+                    </div>
+                    <div className="kpi-label">{stat.label}</div>
+                    <div className="kpi-sub">{stat.sub}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
         </div>
       </main>
 
-      <PageFooter />
+      <PageFooter note={`${vehicle.name} data sourced from public announcements and investor communications. Estimates are approximations.`} />
     </div>
   );
 }

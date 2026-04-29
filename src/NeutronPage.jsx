@@ -131,59 +131,61 @@ export default function NeutronPage() {
           </p>
         </section>
 
-        <section className="detail-section">
-          <p className="chart-heading">Development Milestones</p>
-          <div className="neutron-milestone-grid">
-            {MILESTONES.map((milestone) => (
-              <article key={milestone.title} className="chart-card neutron-milestone-card">
-                <StatusBadge status={milestone.status} color={milestone.color} />
-                <h3>{milestone.title}</h3>
-                <MiniBar pct={milestone.pct} color={milestone.color} animated={animated} />
-                <div className="milestone-pct">{milestone.pct}%</div>
-                <p>{milestone.detail}</p>
-              </article>
-            ))}
-          </div>
-        </section>
+        <div className="indev-main-content">
+          <section className="detail-section">
+            <p className="chart-heading">Development Milestones</p>
+            <div className="neutron-milestone-grid">
+              {MILESTONES.map((milestone) => (
+                <article key={milestone.title} className="chart-card neutron-milestone-card">
+                  <StatusBadge status={milestone.status} color={milestone.color} />
+                  <h3>{milestone.title}</h3>
+                  <MiniBar pct={milestone.pct} color={milestone.color} animated={animated} />
+                  <div className="milestone-pct">{milestone.pct}%</div>
+                  <p>{milestone.detail}</p>
+                </article>
+              ))}
+            </div>
+          </section>
 
-        <section className="detail-section">
-          <p className="chart-heading">Program Timeline</p>
-          <div className="chart-card neutron-timeline-card">
-            <div className="neutron-timeline-wrap">
-              <div className="neutron-timeline-line" />
-              {TIMELINE.map((item) => (
-                <div key={item.year} className="neutron-timeline-item">
-                  <div className="neutron-timeline-year" style={{ color: item.current ? C.green : C.orange }}>
-                    {item.year}
+          <section className="detail-section">
+            <p className="chart-heading">Program Timeline</p>
+            <div className="chart-card neutron-timeline-card">
+              <div className="neutron-timeline-wrap">
+                <div className="neutron-timeline-line" />
+                {TIMELINE.map((item) => (
+                  <div key={item.year} className="neutron-timeline-item">
+                    <div className="neutron-timeline-year" style={{ color: item.current ? C.green : C.orange }}>
+                      {item.year}
+                    </div>
+                    <div
+                      className="neutron-timeline-dot"
+                      style={{
+                        background: item.current ? C.green : C.orange,
+                        boxShadow: item.current ? `0 0 10px ${C.green}88` : 'none',
+                      }}
+                    />
+                    <div className="neutron-timeline-text">{item.label}</div>
                   </div>
-                  <div
-                    className="neutron-timeline-dot"
-                    style={{
-                      background: item.current ? C.green : C.orange,
-                      boxShadow: item.current ? `0 0 10px ${C.green}88` : 'none',
-                    }}
-                  />
-                  <div className="neutron-timeline-text">{item.label}</div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="detail-section">
+            <p className="chart-heading">Key Specifications</p>
+            <div className="kpi-row">
+              {STATS.map((stat) => (
+                <div key={stat.label} className="kpi-card" style={{ borderTopColor: C.green }}>
+                  <div className="kpi-value neutron-stat-value" style={{ color: C.green }}>
+                    {stat.value}
+                  </div>
+                  <div className="kpi-label">{stat.label}</div>
+                  <div className="kpi-sub">{stat.sub}</div>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        <section className="detail-section">
-          <p className="chart-heading">Key Specifications</p>
-          <div className="kpi-row">
-            {STATS.map((stat) => (
-              <div key={stat.label} className="kpi-card" style={{ borderTopColor: C.green }}>
-                <div className="kpi-value neutron-stat-value" style={{ color: C.green }}>
-                  {stat.value}
-                </div>
-                <div className="kpi-label">{stat.label}</div>
-                <div className="kpi-sub">{stat.sub}</div>
-              </div>
-            ))}
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
 
       <PageFooter note="Neutron data sourced from public Rocket Lab announcements and investor communications. Estimates are approximations." />
