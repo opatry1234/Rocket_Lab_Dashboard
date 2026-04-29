@@ -193,3 +193,15 @@ export function ErrorPage({ err }) {
     </div>
   );
 }
+
+// ─── Vehicle hero image ────────────────────────────────────────────────────────
+
+export function VehicleHeroImage({ src }) {
+  if (!src) return null;
+  return (
+    <div className="vehicle-hero" aria-hidden="true">
+      <img src={src} alt="" className="vehicle-hero-img" />
+      <div className="vehicle-hero-grad" />
+    </div>
+  );
+}

@@ -6,7 +6,7 @@ import {
 import { COMPANIES, VEHICLES, getCompany, getVehicle } from './spaceTerminalData';
 import { fetchLaunchesByRocket, getStaleLaunchesByRocket } from './api';
 import { isFlown, statusOf } from './processors';
-import { Breadcrumbs, C, tt, tickStyle, ErrorPage, LoadingPage, PageFooter } from './shared';
+import { Breadcrumbs, C, tt, tickStyle, ErrorPage, LoadingPage, PageFooter, VehicleHeroImage } from './shared';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,6 +83,8 @@ function InProductionVehicle({ company, vehicle }) {
           </div>
         </div>
       </header>
+
+      <VehicleHeroImage src={vehicle.heroImage} />
 
       {/* Neutron-style top progress bar */}
       <div className="neutron-bar-wrap">
@@ -181,6 +183,8 @@ function UsableVehicle({ company, vehicle }) {
           </div>
         </div>
       </header>
+
+      <VehicleHeroImage src={vehicle.heroImage} />
 
       <main className="main">
         {/* KPI row */}
