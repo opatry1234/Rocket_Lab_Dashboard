@@ -646,6 +646,7 @@ body a {
 
 .comp-kpi-row {
   grid-template-columns: repeat(3, 1fr);
+  margin-top: 20px;
 }
 
 .comp-kpi-card {
