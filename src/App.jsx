@@ -30,6 +30,43 @@ import {
 } from './shared';
 import './styles.css';
 
+// ─── GA4 SPA page-view tracking ───────────────────────────────────────────────
+
+const PAGE_TITLES = {
+  '/':             'Space Terminal',
+  '/launches':     'Electron · Total Launches',
+  '/success-rate': 'Electron · Success Rate',
+  '/upcoming':     'Electron · Upcoming Launches',
+  '/launch-sites': 'Electron · Launch Sites',
+};
+
+function titleFromPath(pathname) {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts[0] !== 'company') return 'Space Terminal';
+  const toLabel = s => s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  if (parts.length === 2) return `${toLabel(parts[1])} · Space Terminal`;
+  if (parts.length === 3) return `${toLabel(parts[2])} · ${toLabel(parts[1])}`;
+  return 'Space Terminal';
+}
+
+function RouteTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    const title = titleFromPath(location.pathname);
+    document.title = title;
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'page_view', {
+        page_path: location.pathname,
+        page_title: title,
+      });
+    }
+  }, [location.pathname]);
+  return null;
+}
+
+// ─── Charts / helpers ─────────────────────────────────────────────────────────
+
 const ORBIT_COLORS = [C.blue, C.orange, C.purple, C.green, C.yellow, C.pink];
 const OUTCOME_COLORS = [C.green, C.red, C.yellow];
 const ORBIT_NAMES = {
@@ -429,6 +466,7 @@ function ElectronDashboard() {
 export default function App() {
   return (
     <>
+      <RouteTracker />
       <AppNav />
       <Routes>
         {/* ── Space Terminal (main page) ── */}
