@@ -167,7 +167,7 @@ export function LoadingPage() {
   return (
     <div className="fullpage">
       <div className="spinner" />
-      <p style={{ color: C.muted, marginTop: 16 }}>Fetching launch data from Launch Library 2...</p>
+      <p style={{ color: C.muted, marginTop: 16 }}>Loading launch data…</p>
       <p style={{ color: C.border, marginTop: 6, fontSize: '0.75rem' }}>First load may take a moment</p>
     </div>
   );

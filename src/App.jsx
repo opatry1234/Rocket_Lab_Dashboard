@@ -6,6 +6,10 @@ import {
   Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import { useLaunchData } from './DataContext';
+import { fetchLaunchesByRocket, getStaleLaunchesByRocket } from './api';
+
+// Rockets used by UsableVehicle pages (excludes Electron, handled by DataContext)
+const PREFETCH_ROCKETS = ['Falcon 9', 'Falcon Heavy', 'New Shepard', 'New Glenn', 'Alpha'];
 import {
   LaunchSitesPage,
   SuccessRatePage,
@@ -464,6 +468,17 @@ function ElectronDashboard() {
 }
 
 export default function App() {
+  // Pre-warm vehicle launch data from Supabase in the background on first load.
+  // If localStorage already has the data this is a no-op; otherwise the Supabase
+  // fetch runs silently so vehicle pages are ready by the time the user navigates there.
+  useEffect(() => {
+    for (const name of PREFETCH_ROCKETS) {
+      if (!getStaleLaunchesByRocket(name)) {
+        fetchLaunchesByRocket(name).catch(() => {});
+      }
+    }
+  }, []);
+
   return (
     <>
       <RouteTracker />
